@@ -1,0 +1,12 @@
+FROM frolvlad/alpine-openjdk7
+COPY . /app  
+WORKDIR /app
+
+EXPOSE 8000
+
+RUN chmod +x ./java-config-rnl-vm.sh
+RUN ./java-config-rnl-vm.sh
+
+RUN javac pt/ulisboa/tecnico/cnv/server/WebServer.java
+
+CMD ["java", "pt.ulisboa.tecnico.cnv.server.WebServer"]
