@@ -2,8 +2,7 @@ FROM frolvlad/alpine-openjdk7
 COPY . /app  
 WORKDIR /app
 
-RUN chmod +x ./java-config-rnl-vm.sh
-RUN ./java-config-rnl-vm.sh
+RUN source java-config-rnl-vm.sh
 
 RUN javac pt/ulisboa/tecnico/cnv/solver/*.java
 
