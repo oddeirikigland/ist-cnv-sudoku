@@ -27,3 +27,8 @@
 hs_err_pid*
 
 # End of https://www.gitignore.io/api/java
+
+!BIT/docs/*
+!project/META-INF/*
+!project/org/*
+!project/pt/ulisboa/tecnico/cnv/util/*
