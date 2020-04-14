@@ -16,6 +16,8 @@ import BIT.highBIT.*;
 import java.io.*;
 import java.util.*;
 
+import functions.Logger;
+
 
 public class ICount {
     private static PrintStream out = null;
@@ -46,6 +48,7 @@ public class ICount {
                     }
                 }
                 ci.addAfter("ICount", "printICount", ci.getClassName());
+                ci.addAfter("ICount", "printToFile", ci.getClassName());
                 ci.write(argv[1] + System.getProperty("file.separator") + infilename);
             }
         }
@@ -64,5 +67,9 @@ public class ICount {
     public static synchronized void mcount(int incr) {
 		m_count++;
     }
-}
 
+    public static synchronized void printToFile(String foo) {
+    String line = i_count + " instructions in " + b_count + " basic blocks were executed in " + m_count + " methods.";
+    Logger.logToFile(line);
+    }
+}

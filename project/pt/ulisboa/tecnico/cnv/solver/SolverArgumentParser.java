@@ -4,7 +4,7 @@ import org.apache.commons.cli.Option;
 import org.json.JSONArray;
 import org.json.JSONException;
 import pt.ulisboa.tecnico.cnv.util.AbstractArgumentParser;
-
+import functions.Logger;
 
 public class SolverArgumentParser extends AbstractArgumentParser {
     public enum SolverParameters {
@@ -145,6 +145,13 @@ public class SolverArgumentParser extends AbstractArgumentParser {
     }
 
     public SolverArgumentParser(final String[] args) {
+        long threadId = Thread.currentThread().getId();
+        Logger.logToFile("\n==================================\nNew request: Thread # " + threadId + " is doing this task");
+        String logArgs = "";
+        for (String arg : args) {
+            logArgs += arg + " ";
+        }
+        Logger.logToFile(logArgs);
         this.setup(args);
     }
 
