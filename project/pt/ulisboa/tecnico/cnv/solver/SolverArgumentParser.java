@@ -5,7 +5,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import pt.ulisboa.tecnico.cnv.util.AbstractArgumentParser;
 
-
 public class SolverArgumentParser extends AbstractArgumentParser {
     public enum SolverParameters {
         /**

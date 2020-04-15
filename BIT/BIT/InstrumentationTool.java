@@ -1,16 +1,4 @@
-	/* ICount.java
- * Sample program using BIT -- counts the number of instructions executed.
- *
- * Copyright (c) 1997, The Regents of the University of Colorado. All
- * Rights Reserved.
- * 
- * Permission to use and copy this software and its documentation for
- * NON-COMMERCIAL purposes and without fee is hereby granted provided
- * that this copyright notice appears in all copies. If you wish to use
- * or wish to have others use BIT for commercial purposes please contact,
- * Stephen V. O'Neil, Director, Office of Technology Transfer at the
- * University of Colorado at Boulder (303) 492-5647.
- */
+package BIT;
 
 import BIT.highBIT.*;
 import java.io.*;
@@ -19,7 +7,7 @@ import java.util.*;
 import functions.Logger;
 
 
-public class ICount {
+public class InstrumentationTool {
     private static PrintStream out = null;
     private static int i_count = 0, b_count = 0, m_count = 0;
     
@@ -40,24 +28,18 @@ public class ICount {
                 // see java.util.Enumeration for more information on Enumeration class
                 for (Enumeration e = ci.getRoutines().elements(); e.hasMoreElements(); ) {
                     Routine routine = (Routine) e.nextElement();
-					routine.addBefore("ICount", "mcount", new Integer(1));
+					routine.addBefore("BIT/InstrumentationTool", "mcount", new Integer(1));
                     
                     for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements(); ) {
                         BasicBlock bb = (BasicBlock) b.nextElement();
-                        bb.addBefore("ICount", "count", new Integer(bb.size()));
+                        bb.addBefore("BIT/InstrumentationTool", "count", new Integer(bb.size()));
                     }
                 }
-                ci.addAfter("ICount", "printICount", ci.getClassName());
-                ci.addAfter("ICount", "printToFile", ci.getClassName());
+                ci.addAfter("BIT/InstrumentationTool", "printToFile", ci.getClassName());
                 ci.write(argv[1] + System.getProperty("file.separator") + infilename);
             }
         }
     }
-    
-    public static synchronized void printICount(String foo) {
-        System.out.println(i_count + " instructions in " + b_count + " basic blocks were executed in " + m_count + " methods.");
-    }
-    
 
     public static synchronized void count(int incr) {
         i_count += incr;
@@ -69,7 +51,25 @@ public class ICount {
     }
 
     public static synchronized void printToFile(String foo) {
-    String line = i_count + " instructions in " + b_count + " basic blocks were executed in " + m_count + " methods.";
-    Logger.logToFile(line);
+        String line = i_count + " instructions in " + b_count + " basic blocks were executed in " + m_count + " methods.";
+        Logger.logToFile(line);
+    }
+
+    // To test connection with WebServer
+    // This is called after solver is done
+    public static Integer result() {
+        printToFile("foo");
+        return i_count;
+    }
+
+    public static synchronized Integer checkParams(String[] params, long threadId) {
+        System.out.println("This is the params from request in WebServer:");
+        for (String param : params) {
+            System.out.println(param);
+        }
+        System.out.println("Thread # " + threadId + " is doing this task");
+
+        // TODO: return metrics based on these params
+        return 333;
     }
 }
