@@ -32,5 +32,7 @@ hs_err_pid*
 !project/META-INF/*
 !project/org/*
 !project/pt/ulisboa/tecnico/cnv/util/*
+!project/org/json/*
+!project/org/apache/commons/cli/*
 
 sources.txt
