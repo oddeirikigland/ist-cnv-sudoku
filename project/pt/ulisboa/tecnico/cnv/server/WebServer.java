@@ -18,6 +18,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
 
+import BIT.InstrumentationTool;
+
 public class WebServer {
 
 	public static void main(final String[] args) throws Exception {
@@ -66,6 +68,12 @@ public class WebServer {
 			// Break it down into String[].
 			final String[] params = query.split("&");
 
+			// Calling instrumentation tool to check the params
+			// TODO: use result from checkparams (aka: metrics) to decide where to run the sudoku solver
+			long threadId = Thread.currentThread().getId();
+			Integer metricNumber = InstrumentationTool.checkParams(params, threadId);
+			System.out.println("Metric value of this request is: " + metricNumber);
+
 			// Store as if it was a direct call to SolverMain.
 			final ArrayList<String> newArgs = new ArrayList<>();
 			for (final String p : params) {
@@ -94,12 +102,13 @@ public class WebServer {
 			//Solve sudoku puzzle
 			JSONArray solution = s.solveSudoku();
 
+			// Store new findings to metrix
+			// TODO: call method in instrumentation tool to store result obtained from solved sudoku
+			System.out.println("Number returned from instrumenatation tool " + InstrumentationTool.result()); // How to call instrumention tool
 
 			// Send response to browser.
 			final Headers hdrs = t.getResponseHeaders();
-
             //t.sendResponseHeaders(200, responseFile.length());
-
 
 			///hdrs.add("Content-Type", "image/png");
             hdrs.add("Content-Type", "application/json");
@@ -111,7 +120,6 @@ public class WebServer {
 			hdrs.add("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
 
             t.sendResponseHeaders(200, solution.toString().length());
-
 
             final OutputStream os = t.getResponseBody();
             OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
