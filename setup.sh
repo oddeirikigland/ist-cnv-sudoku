@@ -1,18 +1,37 @@
 #!/bin/sh
 
-# Config
-chmod +x BIT/java-config-rnl-vm.sh
-chmod +x BIT/config-bit.sh
-chmod +x classpath-config.sh
+if test "$1" = "configure";
+then
+  # set classpath ( former classpath-config.sh and config-bit.sh )
+  export CLASSPATH=$CLASSPATH:~/ist-cnv-sudoku/instrumented:~/ist-cnv-sudoku/project:~/ist-cnv-sudoku/BIT:~/ist-cnv-sudoku/BIT/samples:.
+  export CLASSPATH=$CLASSPATH:/tmp/cnv/BIT:/tmp/cnv/BIT/samples:./
 
-./BIT/java-config-rnl-vm.sh
-./BIT/config-bit.sh
-./classpath-config.sh
+  # export java variables (former java-config-rnl-vm.sh)l
+  export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64/
+  export JAVA_ROOT=/usr/lib/jvm/java-7-openjdk-amd64/
+  export JDK_HOME=/usr/lib/jvm/java-7-openjdk-amd64/
+  export JRE_HOME=/usr/lib/jvm/java-7-openjdk-amd64/jre
+  export PATH=/usr/lib/jvm/java-7-openjdk-amd64/bin/:$PATH
+  export SDK_HOME=/usr/lib/jvm/java-7-openjdk-amd64/
+  export _JAVA_OPTIONS="-XX:-UseSplitVerifier "$_JAVA_OPTIONS
 
-# Find and compile all files
-find -name "*.java" > sources.txt
-javac @sources.txt
+  # create required folder structure
+  mkdir instrumented
+  mkdir instrumented/pt
+  mkdir instrumented/pt/ulisboa
+  mkdir instrumented/pt/ulisboa/tecnico
+  mkdir instrumented/pt/ulisboa/tecnico/cnv
+  mkdir instrumented/pt/ulisboa/tecnico/cnv/solver
 
+  mkdir BIT/examples/output
+fi
+
+if test "$1" = "compile";
+then
+  # Find and compile all files
+  find -name "*.java" > sources.txt
+  javac @sources.txt
+fi
 
 if test "$1" = "InstrumentationToolHello";
 then
