@@ -16,14 +16,8 @@ then
   export _JAVA_OPTIONS="-XX:-UseSplitVerifier "$_JAVA_OPTIONS
 
   # create required folder structure
-  mkdir instrumented
-  mkdir instrumented/pt
-  mkdir instrumented/pt/ulisboa
-  mkdir instrumented/pt/ulisboa/tecnico
-  mkdir instrumented/pt/ulisboa/tecnico/cnv
-  mkdir instrumented/pt/ulisboa/tecnico/cnv/solver
-
-  mkdir BIT/examples/output
+  mkdir -p instrumented/pt/ulisboa/tecnico/cnv/solver
+  mkdir -p BIT/examples/output
 fi
 
 if test "$1" = "compile";
