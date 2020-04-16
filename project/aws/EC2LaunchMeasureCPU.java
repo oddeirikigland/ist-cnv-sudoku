@@ -71,9 +71,9 @@ public class EC2LaunchMeasureCPU {
                     "location (~/.aws/credentials), and is in valid format.",
                     e);
         }
-ec2 = AmazonEC2ClientBuilder.standard().withRegion("eu-west-1").withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
+ec2 = AmazonEC2ClientBuilder.standard().withRegion("us-east-1").withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
 
-cloudWatch = AmazonCloudWatchClientBuilder.standard().withRegion("eu-west-1").withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
+cloudWatch = AmazonCloudWatchClientBuilder.standard().withRegion("us-east-1").withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
     }
 
 
@@ -105,12 +105,12 @@ cloudWatch = AmazonCloudWatchClientBuilder.standard().withRegion("eu-west-1").wi
             RunInstancesRequest runInstancesRequest =
                new RunInstancesRequest();
 
-            runInstancesRequest.withImageId("ami-a0e9d7c6")
+            runInstancesRequest.withImageId("ami-07cc2e1c960392f09")
                                .withInstanceType("t2.micro")
                                .withMinCount(1)
                                .withMaxCount(1)
-                               .withKeyName("jog-aws")
-                               .withSecurityGroups("ssh+http8000");
+                               .withKeyName("cloud-compute-lab3")
+                               .withSecurityGroups("launch-wizard-1-cloud-compute");
 							   
             RunInstancesResult runInstancesResult =
                ec2.runInstances(runInstancesRequest);

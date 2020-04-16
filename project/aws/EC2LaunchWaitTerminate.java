@@ -82,7 +82,7 @@ public class EC2LaunchWaitTerminate {
                     "location (~/.aws/credentials), and is in valid format.",
                     e);
         }
-      ec2 = AmazonEC2ClientBuilder.standard().withRegion("eu-west-1").withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
+      ec2 = AmazonEC2ClientBuilder.standard().withRegion("us-east-1").withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
     }
 
 
@@ -125,12 +125,12 @@ public class EC2LaunchWaitTerminate {
                new RunInstancesRequest();
 
             /* TODO: configure to use your AMI, key and security group */
-            runInstancesRequest.withImageId("ami-08ef697b")
+            runInstancesRequest.withImageId("ami-07cc2e1c960392f09")
                                .withInstanceType("t2.micro")
                                .withMinCount(1)
                                .withMaxCount(1)
-                               .withKeyName("cnv-aws")
-                               .withSecurityGroups("ssh+http8000");
+                               .withKeyName("cloud-compute-lab3")
+                               .withSecurityGroups("launch-wizard-1-cloud-compute");
             RunInstancesResult runInstancesResult =
                ec2.runInstances(runInstancesRequest);
             String newInstanceId = runInstancesResult.getReservation().getInstances()
