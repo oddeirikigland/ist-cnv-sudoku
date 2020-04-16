@@ -1,22 +1,29 @@
 # ist-cnv-sudoku
 
+##  Attention
+use "source setup.sh XXX" instead of "./setup.sh XXX" to avoid mistakes with the environment variables"
+
+
+## Configure environment
+```bash
+chmod +x setup.sh
+source setup.sh configure
+```
+
+## Compile sources
+```bash
+source setup.sh compile
+```
+
 ## Run WebServer
-
 ```bash
-chmod +x setup.sh
-./setup WebServer
+source setup.sh WebServer
 ```
 
-## Setup
-
-```bash
-chmod +x setup.sh
-./setup.sh
-```
-
+## Simple Tests
 Use one of these commands to see a simple use case
 
 ```bash
-./setup InstrumentationToolHello
-./setup InstrumentationToolSolver
+source setup.sh InstrumentationToolHello
+source setup.sh InstrumentationToolSolver
 ```
