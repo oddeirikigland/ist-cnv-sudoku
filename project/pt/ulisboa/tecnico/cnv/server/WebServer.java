@@ -70,8 +70,7 @@ public class WebServer {
 
 			// Calling instrumentation tool to check the params
 			// TODO: use result from checkparams (aka: metrics) to decide where to run the sudoku solver
-			long threadId = Thread.currentThread().getId();
-			Integer metricNumber = InstrumentationTool.checkParams(params, threadId);
+			Integer metricNumber = InstrumentationTool.checkParams(params);
 			System.out.println("Metric value of this request is: " + metricNumber);
 
 			// Store as if it was a direct call to SolverMain.
