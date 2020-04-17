@@ -9,18 +9,50 @@ policyIncreaseName="my-simple-scale-in-policy-increase"
 policyDecreaseName="my-simple-scale-in-policy-decrease"
 alarmHighName="Step-Scaling-AlarmHigh-AddCapacity"
 alarmLowName="Step-Scaling-AlarmLow-RemoveCapacity"
+security_group="sg-04ceefaf6f626fba3"
+image_id="ami-0966bb7855730320b"
+key_name="cloud-compute-lab3"
+security_group_name="launch-wizard-1-cloud-compute"
 
-read -p "Enter security group [sg-04ceefaf6f626fba3]: " security_group
-security_group=${security_group:-sg-04ceefaf6f626fba3}
 
-read -p "Enter EC2 instance id [i-021d07e3c2936fe25]: " instance_id
-instance_id=${instance_id:-i-021d07e3c2936fe25}
+if test "$1" = "terminate";
+then
+    LoadBalancerArn=$(aws elbv2 describe-load-balancers --output json --query 'LoadBalancers[0].LoadBalancerArn' | 
+        grep "arn.*" | 
+        sed "s/[,\" ]//g" |
+        xargs)
+
+    TargetGroupArn=$(aws elbv2 describe-target-groups --output json --query 'TargetGroups[0].TargetGroupArn' | 
+        grep "arn.*" | 
+        sed "s/[,\" ]//g" |
+        xargs)
+
+    instance_id=$(aws ec2 describe-instances --output json --query 'Reservations[0].Instances[0].InstanceId' | 
+        grep "i-*" | 
+        sed "s/[,\" ]//g" |
+        xargs)
+
+    aws ec2 terminate-instances --instance-ids $instance_id
+    aws autoscaling delete-auto-scaling-group --auto-scaling-group-name $autoScalingGroupName --force-delete
+    aws autoscaling delete-launch-configuration --launch-configuration-name $launchConfigurationName
+
+    if [ $(echo -n $LoadBalancerArn | wc -m) -ge 1 ];
+    then
+        aws elbv2 delete-load-balancer --load-balancer-arn $LoadBalancerArn
+    fi
+    if [ $(echo -n $TargetGroupArn | wc -m) -ge 1 ];
+    then
+
+        aws elbv2 delete-target-group --target-group-arn $TargetGroupArn
+    fi
+    exit 1
+fi
 
 
 # Create load balancer
 aws elbv2 create-load-balancer --name $loadbalancer --subnets subnet-00866866 subnet-3b37dc64 --security-groups $security_group
 
-LoadBalancerArn=$(aws elbv2 describe-load-balancers --output json --query 'LoadBalancers[*].LoadBalancerArn' | 
+LoadBalancerArn=$(aws elbv2 describe-load-balancers --output json --query 'LoadBalancers[0].LoadBalancerArn' | 
     grep "arn.*" | 
     sed "s/[,\" ]//g" |
     xargs)
@@ -29,14 +61,10 @@ LoadBalancerArn=$(aws elbv2 describe-load-balancers --output json --query 'LoadB
 # Create target group
 aws elbv2 create-target-group --name $targetgroup --protocol HTTP --port 8000 --vpc-id vpc-e1665c9b
 
-TargetGroupArn=$(aws elbv2 describe-target-groups --output json --query 'TargetGroups[*].TargetGroupArn' | 
+TargetGroupArn=$(aws elbv2 describe-target-groups --output json --query 'TargetGroups[0].TargetGroupArn' | 
     grep "arn.*" | 
     sed "s/[,\" ]//g" |
     xargs)
-
-
-# Register target on instance
-aws elbv2 register-targets --target-group-arn $TargetGroupArn --targets Id=$instance_id
 
 
 # Create listener
@@ -45,7 +73,7 @@ aws elbv2 create-listener --load-balancer-arn $LoadBalancerArn --protocol HTTP -
 
 # Create launch configuration
 aws autoscaling create-launch-configuration --launch-configuration-name $launchConfigurationName  \
---instance-id $instance_id --instance-type t2.micro --instance-monitoring Enabled=true
+    --image-id $image_id --key-name $key_name --instance-type t2.micro --instance-monitoring Enabled=true --security-groups $security_group
 
 
 # Create auto scaling group
@@ -79,12 +107,19 @@ aws cloudwatch put-metric-alarm --alarm-name $alarmHighName \
 --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average \
 --period 60 --evaluation-periods 1 --threshold 60 \
 --comparison-operator GreaterThanOrEqualToThreshold \
---dimensions "Name=AutoScalingGroupName,Value=my-asg" \
+--dimensions "Name=AutoScalingGroupName,Value=$autoScalingGroupName" \
 --alarm-actions $policyIncreaseArn
 
 aws cloudwatch put-metric-alarm --alarm-name $alarmLowName \
 --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average \
 --period 60 --evaluation-periods 1 --threshold 40 \
 --comparison-operator LessThanOrEqualToThreshold \
---dimensions "Name=AutoScalingGroupName,Value=my-asg" \
+--dimensions "Name=AutoScalingGroupName,Value=$autoScalingGroupName" \
 --alarm-actions $policyDecreaseArn
+
+# To enable group metrics
+aws autoscaling enable-metrics-collection --auto-scaling-group-name $autoScalingGroupName \
+--metrics GroupDesiredCapacity --granularity "1Minute"
+
+# Get DNS name for load balancer
+aws elb describe-load-balancers --load-balancer-names $loadbalancer
