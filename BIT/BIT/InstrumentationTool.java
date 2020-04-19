@@ -151,10 +151,6 @@ public class InstrumentationTool {
     	File in_dir = new File(argv[0]);
     	File out_dir = new File(argv[1]);
     	
-    	//doICount(in_dir, out_dir);
-    	//doDynamic(in_dir, out_dir);
-        //doAlloc(in_dir, out_dir);
-    	
     	String filelist[] = in_dir.list();
 
 		for (int i = 0; i < filelist.length; i++) {
@@ -213,37 +209,10 @@ public class InstrumentationTool {
 								
 				ci.write(out_filename); // do this only once at end of all instrumenting!
 			}
-		}
-        
-    	
+		}  
     }
     
-    public static void doICount(File in_dir, File out_dir) {
-    	File file_in = in_dir;
-        String infilenames[] = in_dir.list();
-        
-        for (int i = 0; i < infilenames.length; i++) {
-            String infilename = infilenames[i];
-            if (infilename.endsWith(".class")) {
-				// create class info object
-				ClassInfo ci = new ClassInfo(in_dir + System.getProperty("file.separator") + infilename);
-				
-                // loop through all the routines
-                // see java.util.Enumeration for more information on Enumeration class
-                for (Enumeration e = ci.getRoutines().elements(); e.hasMoreElements(); ) {
-                    Routine routine = (Routine) e.nextElement();
-					routine.addBefore("BIT/InstrumentationTool", "mcount", new Integer(1));
-                    
-                    for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements(); ) {
-                        BasicBlock bb = (BasicBlock) b.nextElement();
-                        bb.addBefore("BIT/InstrumentationTool", "count", new Integer(bb.size()));
-                    }
-                }
-                ci.write(out_dir + System.getProperty("file.separator") + infilename);
-            }
-        }
-    	
-    }
+   
 
     public static synchronized void count(int incr) {
         threadStore.get(Thread.currentThread().getId()).count(incr);
@@ -252,37 +221,6 @@ public class InstrumentationTool {
     public static synchronized void mcount(int incr) {
        	threadStore.get(Thread.currentThread().getId()).mcount();
     }
-
-    public static void doDynamic(File in_dir, File out_dir) {
-
-		String filelist[] = in_dir.list();
-
-		for (int i = 0; i < filelist.length; i++) {
-
-			String filename = filelist[i];
-
-			if (filename.endsWith(".class")) {
-
-				String in_filename = in_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
-				String out_filename = out_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
-				ClassInfo ci = new ClassInfo(in_filename);
-				
-				
-				for (Enumeration e = ci.getRoutines().elements(); e.hasMoreElements();) {
-					Routine routine = (Routine) e.nextElement();
-					routine.addBefore("BIT/InstrumentationTool", "dynMethodCount", new Integer(1));
-					
-					for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements();) {
-						BasicBlock bb = (BasicBlock) b.nextElement();
-						bb.addBefore("BIT/InstrumentationTool", "dynInstrCount", new Integer(bb.size()));
-					}
-				}
-				
-				//ci.addAfter("StatisticsTool", "printDynamic", "null");
-				ci.write(out_filename);
-			}
-		}
-	}
     
     public static synchronized void dynInstrCount(int incr) {
     	threadStore.get(Thread.currentThread().getId()).dynInstrCount(incr);
@@ -291,48 +229,11 @@ public class InstrumentationTool {
 	public static synchronized void dynMethodCount(int incr) {
     	threadStore.get(Thread.currentThread().getId()).dynMethodCount(incr);
 	}
-	
-	public static void doAlloc(File in_dir, File out_dir) {
 		
-		String filelist[] = in_dir.list();
-		
-		for (int i = 0; i < filelist.length; i++) {
-			
-			String filename = filelist[i];
-			
-			if (filename.endsWith(".class")) {
-				
-				String in_filename = in_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
-				String out_filename = out_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
-				ClassInfo ci = new ClassInfo(in_filename);
-				
-				for (Enumeration e = ci.getRoutines().elements(); e.hasMoreElements();) {
-					Routine routine = (Routine) e.nextElement();
-					InstructionArray instructions = routine.getInstructionArray();
-					
-					for (Enumeration instrs = instructions.elements(); instrs.hasMoreElements();) {
-						Instruction instr = (Instruction) instrs.nextElement();
-						int opcode = instr.getOpcode();
-						
-						if ((opcode == InstructionTable.NEW) || (opcode == InstructionTable.newarray)
-								|| (opcode == InstructionTable.anewarray)
-								|| (opcode == InstructionTable.multianewarray)) {
-							instr.addBefore("BIT/InstrumentationTool", "allocCount", new Integer(opcode));
-						}
-					}
-				}
-				
-				//ci.addAfter("StatisticsTool", "printAlloc", "null");
-				ci.write(out_filename);
-			}
-		}
-	}
-	
 	public static synchronized void allocCount(int type) {
     	threadStore.get(Thread.currentThread().getId()).allocCount(type);
 	}
     
-	
 	public static synchronized void LSFieldCount(int type) {
     	threadStore.get(Thread.currentThread().getId()).LSFieldCount(type);
 	}
