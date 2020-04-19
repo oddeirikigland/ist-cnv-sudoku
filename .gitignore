@@ -36,3 +36,4 @@ hs_err_pid*
 !project/org/apache/commons/cli/*
 
 sources.txt
+/bin/
