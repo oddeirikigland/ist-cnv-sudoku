@@ -8,6 +8,34 @@ import java.text.DateFormat;
 
 import functions.Logger;
 
+class StatisticsBranch  // needed here because i could not import it properly
+{
+	String class_name_;
+	String method_name_;
+	int pc_;
+	int taken_;
+	int not_taken_;
+
+	public StatisticsBranch(String class_name, String method_name, int pc) 
+		{
+			class_name_ = class_name;
+			method_name_ = method_name;
+			pc_ = pc;
+			taken_ = 0;
+			not_taken_ = 0;
+		}
+	
+	public void incrTaken()
+		{
+			taken_++;
+		}
+
+	public void incrNotTaken() 
+		{
+			not_taken_++;
+		}
+}
+
 
 class InstrumentationThreadStatistics {
 	// General
@@ -32,6 +60,12 @@ class InstrumentationThreadStatistics {
 	int storecount;
 	int fieldloadcount;
 	int fieldstorecount;
+	
+	StatisticsBranch[] branch_info;
+	int branch_number;
+	int branch_pc;
+	String branch_class_name;
+	String branch_method_name;
     
 
     InstrumentationThreadStatistics() {
@@ -57,6 +91,15 @@ class InstrumentationThreadStatistics {
     }
 
     String resultToLog() {
+    	
+    	String branch_info_log = "";
+    	for (int i = 0; i < branch_info.length; i++) {
+			if (branch_info[i] != null) {
+				//branch_info[i].print();
+				branch_info_log += branch_info[i].class_name_ + '\t' + branch_info[i].method_name_ + '\t' + branch_info[i].pc_ + '\t' + branch_info[i].taken_ + '\t' + branch_info[i].not_taken_ + "\n";
+			}
+		}
+    	
         DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
         Date date = new Date();
         long timeUsed = System.nanoTime() - this.start_time;
@@ -80,7 +123,10 @@ class InstrumentationThreadStatistics {
             "\nLoad count: " + this.loadcount +
             "\nStore count: " + this.storecount +
             "\nField load count: " + this.fieldloadcount +
-            "\nField store count: " + this.fieldstorecount 
+            "\nField store count: " + this.fieldstorecount +
+            "\nBranch summary-------------------------------" +
+            "\nCLASS NAME" + '\t' + "METHOD" + '\t' + "PC" + '\t' + "TAKEN" + '\t' + "NOT_TAKEN" +
+            branch_info_log            // currently looks like shit but at least works
             ;
     }
 
@@ -136,12 +182,45 @@ class InstrumentationThreadStatistics {
 		else
 			this.storecount++;
 	}
+
+	void setBranchMethodName(String name) {
+		this.branch_method_name = name;
+	}
+	
+	void setBranchClassName(String name) {
+		this.branch_class_name = name;
+	}
+	
+	void setBranchPC(int pc) {
+		this.branch_pc = pc;
+	}
+	
+	void branchInit(int n) {
+		if (this.branch_info == null) {
+			this.branch_info = new StatisticsBranch[n];
+		}
+	}
+	
+	void updateBranchNumber(int n) {
+		this.branch_number = n;
+		if (this.branch_info[branch_number] == null) {
+			this.branch_info[this.branch_number] = new StatisticsBranch(this.branch_class_name, this.branch_method_name, this.branch_pc);
+		}
+	}
+	
+	void updateBranchOutcome(int br_outcome) {
+		if (br_outcome == 0) {
+			this.branch_info[this.branch_number].incrNotTaken();
+		} else {
+			this.branch_info[this.branch_number].incrTaken();
+		}
+	}
 }
 
 public class InstrumentationTool {
 	
     private static PrintStream out = null;
-    private static int i_count = 0, b_count = 0, m_count = 0; // in use??
+    //private static int i_count = 0, b_count = 0, m_count = 0; // in use??
     private static HashMap<Long, InstrumentationThreadStatistics> threadStore = new HashMap<Long, InstrumentationThreadStatistics>();
     
     /* main reads in all the files class files present in the input directory,
@@ -150,6 +229,9 @@ public class InstrumentationTool {
     public static void main(String argv[]) {
     	File in_dir = new File(argv[0]);
     	File out_dir = new File(argv[1]);
+    	
+    	int k = 0; // needed for branch part
+		int total = 0; // needed for branch part
     	
     	String filelist[] = in_dir.list();
 
@@ -205,11 +287,60 @@ public class InstrumentationTool {
 							}
 						}
 					} //LOAD STORE
+					
+					//BRANCH
+					InstructionArray instructionsBranch = routine.getInstructionArray();
+					
+					for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements();) {
+						BasicBlock bb = (BasicBlock) b.nextElement();
+						Instruction instr = (Instruction) instructionsBranch.elementAt(bb.getEndAddress());
+						short instr_type = InstructionTable.InstructionTypeTable[instr.getOpcode()];
+						
+						if (instr_type == InstructionTable.CONDITIONAL_INSTRUCTION) {
+							total++;
+						}
+					}
+					//BRANCH
 				}
-								
+			}
+		} 
+		
+		//BRANCH2
+		for (int i = 0; i < filelist.length; i++) {
+			
+			String filename = filelist[i];
+			
+			if (filename.endsWith(".class")) {
+				
+				String in_filename = in_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
+				String out_filename = out_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
+				ClassInfo ci = new ClassInfo(in_filename);
+				
+				for (Enumeration e = ci.getRoutines().elements(); e.hasMoreElements();) {
+					Routine routine = (Routine) e.nextElement();
+					routine.addBefore("BIT/InstrumentationTool", "setBranchMethodName", routine.getMethodName());
+					InstructionArray instructions = routine.getInstructionArray();
+					
+					for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements();) {
+						BasicBlock bb = (BasicBlock) b.nextElement();
+						Instruction instr = (Instruction) instructions.elementAt(bb.getEndAddress());
+						short instr_type = InstructionTable.InstructionTypeTable[instr.getOpcode()];
+						
+						if (instr_type == InstructionTable.CONDITIONAL_INSTRUCTION) {
+							instr.addBefore("BIT/InstrumentationTool", "setBranchPC", new Integer(instr.getOffset()));
+							instr.addBefore("BIT/InstrumentationTool", "updateBranchNumber", new Integer(k));
+							instr.addBefore("BIT/InstrumentationTool", "updateBranchOutcome", "BranchOutcome");
+							k++;
+						}
+					}
+				}
+				
+				ci.addBefore("BIT/InstrumentationTool", "setBranchClassName", ci.getClassName());
+				ci.addBefore("BIT/InstrumentationTool", "branchInit", new Integer(total));
+				
 				ci.write(out_filename); // do this only once at end of all instrumenting!
 			}
-		}  
+		} // BRANCH2
     }
     
    
@@ -242,8 +373,31 @@ public class InstrumentationTool {
     	threadStore.get(Thread.currentThread().getId()).LSCount(type);
 	}
 	
-	/**
-	 * Calls Logger to print results in log file*/
+	public static synchronized void setBranchClassName(String name) {
+    	threadStore.get(Thread.currentThread().getId()).setBranchClassName(name);
+	}
+	
+	public static synchronized void setBranchMethodName(String name) {
+    	threadStore.get(Thread.currentThread().getId()).setBranchMethodName(name);
+	}
+	
+	public static synchronized void setBranchPC(int pc) {
+    	threadStore.get(Thread.currentThread().getId()).setBranchPC(pc);
+	}
+	
+	public static synchronized void branchInit(int n) {
+    	threadStore.get(Thread.currentThread().getId()).branchInit(n);
+	}
+	
+	public static synchronized void updateBranchNumber(int n) {
+    	threadStore.get(Thread.currentThread().getId()).updateBranchNumber(n);
+	}
+	
+	public static synchronized void updateBranchOutcome(int br_outcome) {
+    	threadStore.get(Thread.currentThread().getId()).updateBranchOutcome(br_outcome);
+	}
+	
+	// Calls Logger to print results in log file
     public static synchronized void printToFile(long threadId) {
         Logger.logToFile(threadStore.get(threadId).resultToLog());
     }
