@@ -1,0 +1,57 @@
+>>> 16x16_02-BFS-256 <<<
+
+==============================================
+Logged at: 21.04.2020 15:34:09
+Seconds used: 81.648649922
+Basic Counts-------------------------------
+Dynamic basic blocks: 1105440766
+Dynamic instructions: 2579585491
+Dynamic Methods: 5384
+Allocations--------------------------------
+New: 43
+New array: 0
+A new array: 4
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 368740444
+Store count: 368426448
+Field load count: 28626
+Field store count: 20
+>>> 16x16_02-DLX-256 <<<
+
+==============================================
+Logged at: 21.04.2020 15:40:37
+Seconds used: 114.004329433
+Basic Counts-------------------------------
+Dynamic basic blocks: 743248847
+Dynamic instructions: 1822690820
+Dynamic Methods: 12935
+Allocations--------------------------------
+New: 3301
+New array: 203
+A new array: 3
+Multi a new array: 2
+Load/Store---------------------------------
+Load count: 306461480
+Store count: 251873115
+Field load count: 4913308
+Field store count: 34575
+>>> 16x16_02-CP-256 <<<
+
+==============================================
+Logged at: 21.04.2020 15:43:45
+Seconds used: 164.905831314
+Basic Counts-------------------------------
+Dynamic basic blocks: 1175984824
+Dynamic instructions: 2744203804
+Dynamic Methods: 4310
+Allocations--------------------------------
+New: 1362
+New array: 0
+A new array: 2
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 392224284
+Store count: 391949163
+Field load count: 42453
+Field store count: 7
