@@ -92,13 +92,13 @@ class InstrumentationThreadStatistics {
 
     String resultToLog() {
     	
-    	String branch_info_log = "";
-    	for (int i = 0; i < branch_info.length; i++) {
-			if (branch_info[i] != null) {
-				//branch_info[i].print();
-				branch_info_log += branch_info[i].class_name_ + '\t' + branch_info[i].method_name_ + '\t' + branch_info[i].pc_ + '\t' + branch_info[i].taken_ + '\t' + branch_info[i].not_taken_ + "\n";
-			}
-		}
+//    	String branch_info_log = "";
+//    	for (int i = 0; i < branch_info.length; i++) {
+//			if (branch_info[i] != null) {
+//				//branch_info[i].print();
+//				branch_info_log += branch_info[i].class_name_ + '\t' + branch_info[i].method_name_ + '\t' + branch_info[i].pc_ + '\t' + branch_info[i].taken_ + '\t' + branch_info[i].not_taken_ + "\n";
+//			}
+//		}
     	
         DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
         Date date = new Date();
@@ -124,9 +124,9 @@ class InstrumentationThreadStatistics {
             "\nStore count: " + this.storecount +
             "\nField load count: " + this.fieldloadcount +
             "\nField store count: " + this.fieldstorecount +
-            "\nBranch summary-------------------------------" +
-            "\nCLASS NAME" + '\t' + "METHOD" + '\t' + "PC" + '\t' + "TAKEN" + '\t' + "NOT_TAKEN" +
-            branch_info_log            // currently looks like shit but at least works
+            "\nBranch summary-------------------------------"
+//            "\nCLASS NAME" + '\t' + "METHOD" + '\t' + "PC" + '\t' + "TAKEN" + '\t' + "NOT_TAKEN" +
+//            branch_info_log            // currently looks like shit but at least works
             ;
     }
 
@@ -230,9 +230,6 @@ public class InstrumentationTool {
     	File in_dir = new File(argv[0]);
     	File out_dir = new File(argv[1]);
     	
-    	int k = 0; // needed for branch part
-		int total = 0; // needed for branch part
-    	
     	String filelist[] = in_dir.list();
 
 		for (int i = 0; i < filelist.length; i++) {
@@ -287,60 +284,11 @@ public class InstrumentationTool {
 							}
 						}
 					} //LOAD STORE
-					
-					//BRANCH
-					InstructionArray instructionsBranch = routine.getInstructionArray();
-					
-					for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements();) {
-						BasicBlock bb = (BasicBlock) b.nextElement();
-						Instruction instr = (Instruction) instructionsBranch.elementAt(bb.getEndAddress());
-						short instr_type = InstructionTable.InstructionTypeTable[instr.getOpcode()];
-						
-						if (instr_type == InstructionTable.CONDITIONAL_INSTRUCTION) {
-							total++;
-						}
-					}
-					//BRANCH
 				}
-			}
-		} 
-		
-		//BRANCH2
-		for (int i = 0; i < filelist.length; i++) {
-			
-			String filename = filelist[i];
-			
-			if (filename.endsWith(".class")) {
-				
-				String in_filename = in_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
-				String out_filename = out_dir.getAbsolutePath() + System.getProperty("file.separator") + filename;
-				ClassInfo ci = new ClassInfo(in_filename);
-				
-				for (Enumeration e = ci.getRoutines().elements(); e.hasMoreElements();) {
-					Routine routine = (Routine) e.nextElement();
-					routine.addBefore("BIT/InstrumentationTool", "setBranchMethodName", routine.getMethodName());
-					InstructionArray instructions = routine.getInstructionArray();
-					
-					for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements();) {
-						BasicBlock bb = (BasicBlock) b.nextElement();
-						Instruction instr = (Instruction) instructions.elementAt(bb.getEndAddress());
-						short instr_type = InstructionTable.InstructionTypeTable[instr.getOpcode()];
-						
-						if (instr_type == InstructionTable.CONDITIONAL_INSTRUCTION) {
-							instr.addBefore("BIT/InstrumentationTool", "setBranchPC", new Integer(instr.getOffset()));
-							instr.addBefore("BIT/InstrumentationTool", "updateBranchNumber", new Integer(k));
-							instr.addBefore("BIT/InstrumentationTool", "updateBranchOutcome", "BranchOutcome");
-							k++;
-						}
-					}
-				}
-				
-				ci.addBefore("BIT/InstrumentationTool", "setBranchClassName", ci.getClassName());
-				ci.addBefore("BIT/InstrumentationTool", "branchInit", new Integer(total));
-				
+								
 				ci.write(out_filename); // do this only once at end of all instrumenting!
 			}
-		} // BRANCH2
+		} 
     }
     
    
