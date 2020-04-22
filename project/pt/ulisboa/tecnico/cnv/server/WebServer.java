@@ -31,6 +31,7 @@ public class WebServer {
 
 
 		server.createContext("/sudoku", new MyHandler());
+		server.createContext("/test", new MyPingHandler());
 
 		// be aware! infinite pool of threads!
 		server.setExecutor(Executors.newCachedThreadPool());
@@ -128,6 +129,33 @@ public class WebServer {
 
 			os.close();
 
+			System.out.println("> Sent response to " + t.getRemoteAddress().toString());
+		}
+	}
+	static class MyPingHandler implements HttpHandler {
+		@Override
+		public void handle(final HttpExchange t) throws IOException {
+			final String responseBody = "Instance is working";
+
+			// Send response to browser.
+			final Headers hdrs = t.getResponseHeaders();
+
+            hdrs.add("Content-Type", "application/json");
+
+			hdrs.add("Access-Control-Allow-Origin", "*");
+
+            hdrs.add("Access-Control-Allow-Credentials", "true");
+			hdrs.add("Access-Control-Allow-Methods", "POST, GET, HEAD, OPTIONS");
+			hdrs.add("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
+
+            t.sendResponseHeaders(200, responseBody.length());
+
+            final OutputStream os = t.getResponseBody();
+            OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
+            osw.write(responseBody);
+            osw.flush();
+            osw.close();
+			os.close();
 			System.out.println("> Sent response to " + t.getRemoteAddress().toString());
 		}
 	}
