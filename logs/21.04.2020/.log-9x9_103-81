@@ -1,0 +1,60 @@
+>>> 9x9_103-BFS-81 <<<
+
+==============================================
+Logged at: 21.04.2020 15:08:13
+Seconds used: 14.847647824
+Basic Counts-------------------------------
+Dynamic basic blocks: 173798331
+Dynamic instructions: 405558939
+Dynamic Methods: 1138
+Allocations--------------------------------
+New: 22
+New array: 0
+A new array: 2
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 57967784
+Store count: 57925343
+Field load count: 3375
+Field store count: 7
+Branch summary-------------------------------
+>>> 9x9_103-DLX-81 <<<
+
+==============================================
+Logged at: 21.04.2020 15:09:26
+Seconds used: 20.072660646
+Basic Counts-------------------------------
+Dynamic basic blocks: 234811430
+Dynamic instructions: 552855921
+Dynamic Methods: 3585
+Allocations--------------------------------
+New: 1046
+New array: 60
+A new array: 3
+Multi a new array: 2
+Load/Store---------------------------------
+Load count: 81580276
+Store count: 78483223
+Field load count: 320540
+Field store count: 10786
+Branch summary-------------------------------
+>>> 9x9_103-CP-81 <<<
+
+==============================================
+Logged at: 21.04.2020 15:10:00
+Seconds used: 12.769655924
+Basic Counts-------------------------------
+Dynamic basic blocks: 149975769
+Dynamic instructions: 349971647
+Dynamic Methods: 865
+Allocations--------------------------------
+New: 192
+New array: 0
+A new array: 2
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 50018869
+Store count: 49986388
+Field load count: 4248
+Field store count: 7
+Branch summary-------------------------------

@@ -1,0 +1,57 @@
+>>> 16x16_06-BFS-625 <<<
+
+==============================================
+Logged at: 21.04.2020 16:26:31
+Seconds used: 207.787562917
+Basic Counts-------------------------------
+Dynamic basic blocks: 1657820440
+Dynamic instructions: 3868754581
+Dynamic Methods: 8891
+Allocations--------------------------------
+New: 38
+New array: 0
+A new array: 2
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 553167847
+Store count: 552493387
+Field load count: 74036
+Field store count: 7
+>>> 16x16_06-DLX-625 <<<
+
+==============================================
+Logged at: 21.04.2020 16:31:42
+Seconds used: 273.786230841
+Basic Counts-------------------------------
+Dynamic basic blocks: 1922791258
+Dynamic instructions: 5315600188
+Dynamic Methods: 36765
+Allocations--------------------------------
+New: 7766
+New array: 512
+A new array: 3
+Multi a new array: 2
+Load/Store---------------------------------
+Load count: 1190029929
+Store count: 680763693
+Field load count: 43129146
+Field store count: 81398
+>>> 16x16_06-CP-625 <<<
+
+==============================================
+Logged at: 21.04.2020 16:36:16
+Seconds used: 221.465897817
+Basic Counts-------------------------------
+Dynamic basic blocks: 1745930696
+Dynamic instructions: 4074279317
+Dynamic Methods: 7342
+Allocations--------------------------------
+New: 2017
+New array: 0
+A new array: 2
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 582387275
+Store count: 581896326
+Field load count: 84744
+Field store count: 7

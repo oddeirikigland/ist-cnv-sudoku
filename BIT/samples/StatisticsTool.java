@@ -143,7 +143,6 @@ public class StatisticsTool {
 					}
 				}
 				
-				ci.addAfter("StatisticsTool", "printToFile", "TestLine"); // call own printing method to write into file 
 				ci.addAfter("StatisticsTool", "printDynamic", "null");
 				ci.write(out_filename);
 			}
@@ -170,12 +169,6 @@ public class StatisticsTool {
 		System.out.println("Average number of basic blocks per method:      " + bb_per_method);
 	}
 	
-	public static synchronized void printToFile(String line) {
-		//System.out.println("logWriter: " + log_writer); 
-		//log_writer.println(line);
-		
-		//with lines above, a null pointer error caused by the log_writer is triggered
-	}
 
 	public static synchronized void dynInstrCount(int incr) {
 		dyn_instr_count += incr;

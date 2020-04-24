@@ -1,0 +1,60 @@
+>>> 16x16_01-BFS-256 <<<
+
+==============================================
+Logged at: 21.04.2020 15:20:48
+Seconds used: 34.672782614
+Basic Counts-------------------------------
+Dynamic basic blocks: 465835090
+Dynamic instructions: 1087061910
+Dynamic Methods: 2954
+Allocations--------------------------------
+New: 29
+New array: 0
+A new array: 2
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 155406540
+Store count: 155251485
+Field load count: 15189
+Field store count: 7
+Branch summary-------------------------------
+>>> 16x16_01-DLX-256 <<<
+
+==============================================
+Logged at: 21.04.2020 15:22:42
+Seconds used: 57.220115968
+Basic Counts-------------------------------
+Dynamic basic blocks: 743248471
+Dynamic instructions: 1822687969
+Dynamic Methods: 12911
+Allocations--------------------------------
+New: 3277
+New array: 203
+A new array: 3
+Multi a new array: 2
+Load/Store---------------------------------
+Load count: 306460439
+Store count: 251872973
+Field load count: 4912704
+Field store count: 34293
+Branch summary-------------------------------
+>>> 16x16_01-CP-256 <<<
+
+==============================================
+Logged at: 21.04.2020 15:24:01
+Seconds used: 43.418301273
+Basic Counts-------------------------------
+Dynamic basic blocks: 564621865
+Dynamic instructions: 1317576947
+Dynamic Methods: 2716
+Allocations--------------------------------
+New: 669
+New array: 0
+A new array: 2
+Multi a new array: 1
+Load/Store---------------------------------
+Load count: 188326249
+Store count: 188183262
+Field load count: 22171
+Field store count: 7
+Branch summary-------------------------------
