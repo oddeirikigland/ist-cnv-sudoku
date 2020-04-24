@@ -37,3 +37,5 @@ hs_err_pid*
 
 sources.txt
 /bin/
+
+.idea

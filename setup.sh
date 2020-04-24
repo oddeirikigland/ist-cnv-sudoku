@@ -20,6 +20,11 @@ then
   mkdir -p BIT/examples/output
 fi
 
+if test "$2" = "aws-cli";
+then
+  export CLASSPATH=$CLASSPATH:~/aws-java-sdk-1.11.762/lib/aws-java-sdk-1.11.762.jar:~/aws-java-sdk-1.11.762/third-party/lib/*:.
+fi
+
 if test "$1" = "compile";
 then
   # Find and compile all files
