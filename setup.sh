@@ -25,6 +25,9 @@ then
   # Find and compile all files
   find -name "*.java" > sources.txt
   javac @sources.txt
+  
+  # Update instrumented files
+  java BIT/InstrumentationTool project/pt/ulisboa/tecnico/cnv/solver instrumented/pt/ulisboa/tecnico/cnv/solver/
 fi
 
 if test "$1" = "InstrumentationToolHello";

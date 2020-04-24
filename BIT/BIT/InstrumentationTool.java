@@ -36,6 +36,8 @@ class StatisticsBranch // needed here because i could not import it properly
 class InstrumentationThreadStatistics {
 	// General
 	long start_time;
+	long threadId;
+	String[] requestParams;
 
 	// ICount
 	int i_count; // Instructions
@@ -63,7 +65,9 @@ class InstrumentationThreadStatistics {
 	String branch_class_name;
 	String branch_method_name;
 
-	InstrumentationThreadStatistics() {
+	InstrumentationThreadStatistics(long threadId, String[] requestParams) {
+		this.threadId = threadId;
+		this.requestParams = requestParams;
 		this.start_time = System.nanoTime();
 
 		this.i_count = 0;
@@ -102,6 +106,8 @@ class InstrumentationThreadStatistics {
 		return "\n==============================================" 	+	 
 				"\nLogged at: " + dateFormat.format(date)			+ 
 				"\nSeconds used: " + timeUsedSeconds +
+				"\nThread ID: " + this.threadId +
+				"\nRequest params: " + this.logParams(this.requestParams) +
 				// "\nInstructions: " + this.i_count +
 				// "\nBasic blocks: " + this.b_count +
 				// "\nMethods: " + this.m_count +
@@ -123,6 +129,14 @@ class InstrumentationThreadStatistics {
 //            "\nCLASS NAME" + '\t' + "METHOD" + '\t' + "PC" + '\t' + "TAKEN" + '\t' + "NOT_TAKEN" +
 //            branch_info_log            // currently looks like shit but at least works
 		;
+	}
+
+	String logParams(String[] params) {
+		String out = "";
+		for (String param : params) {
+			out += param + " ";
+		}
+		return out;
 	}
 
 	void count(int incr) {
@@ -350,7 +364,8 @@ public class InstrumentationTool {
 		for (String param : params) {
 			System.out.println(param);
 		}
-		threadStore.put(Thread.currentThread().getId(), new InstrumentationThreadStatistics());
+		long threadId = Thread.currentThread().getId();
+		threadStore.put(threadId, new InstrumentationThreadStatistics(threadId, params));
 
 		// TODO: return metrics based on these params
 		return 333;
