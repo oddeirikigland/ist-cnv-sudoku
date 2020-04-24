@@ -301,56 +301,60 @@ public class InstrumentationTool {
 		}
 	}
 
+	public static synchronized long getThreadId() {
+		return Thread.currentThread().getId();
+	}
+
 	public static synchronized void count(int incr) {
-		threadStore.get(Thread.currentThread().getId()).count(incr);
+		threadStore.get(getThreadId()).count(incr);
 	}
 
 	public static synchronized void mcount(int incr) {
-		threadStore.get(Thread.currentThread().getId()).mcount();
+		threadStore.get(getThreadId()).mcount();
 	}
 
 	public static synchronized void dynInstrCount(int incr) {
-		threadStore.get(Thread.currentThread().getId()).dynInstrCount(incr);
+		threadStore.get(getThreadId()).dynInstrCount(incr);
 	}
 
 	public static synchronized void dynMethodCount(int incr) {
-		threadStore.get(Thread.currentThread().getId()).dynMethodCount(incr);
+		threadStore.get(getThreadId()).dynMethodCount(incr);
 	}
 
 	public static synchronized void allocCount(int type) {
-		threadStore.get(Thread.currentThread().getId()).allocCount(type);
+		threadStore.get(getThreadId()).allocCount(type);
 	}
 
 	public static synchronized void LSFieldCount(int type) {
-		threadStore.get(Thread.currentThread().getId()).LSFieldCount(type);
+		threadStore.get(getThreadId()).LSFieldCount(type);
 	}
 
 	public static synchronized void LSCount(int type) {
-		threadStore.get(Thread.currentThread().getId()).LSCount(type);
+		threadStore.get(getThreadId()).LSCount(type);
 	}
 
 	public static synchronized void setBranchClassName(String name) {
-		threadStore.get(Thread.currentThread().getId()).setBranchClassName(name);
+		threadStore.get(getThreadId()).setBranchClassName(name);
 	}
 
 	public static synchronized void setBranchMethodName(String name) {
-		threadStore.get(Thread.currentThread().getId()).setBranchMethodName(name);
+		threadStore.get(getThreadId()).setBranchMethodName(name);
 	}
 
 	public static synchronized void setBranchPC(int pc) {
-		threadStore.get(Thread.currentThread().getId()).setBranchPC(pc);
+		threadStore.get(getThreadId()).setBranchPC(pc);
 	}
 
 	public static synchronized void branchInit(int n) {
-		threadStore.get(Thread.currentThread().getId()).branchInit(n);
+		threadStore.get(getThreadId()).branchInit(n);
 	}
 
 	public static synchronized void updateBranchNumber(int n) {
-		threadStore.get(Thread.currentThread().getId()).updateBranchNumber(n);
+		threadStore.get(getThreadId()).updateBranchNumber(n);
 	}
 
 	public static synchronized void updateBranchOutcome(int br_outcome) {
-		threadStore.get(Thread.currentThread().getId()).updateBranchOutcome(br_outcome);
+		threadStore.get(getThreadId()).updateBranchOutcome(br_outcome);
 	}
 
 	// Calls Logger to print results in log file
@@ -360,11 +364,7 @@ public class InstrumentationTool {
 
 	// This method is called before the solver starts
 	public static synchronized Integer checkParams(String[] params) {
-		System.out.println("This is the params from request in WebServer:");
-		for (String param : params) {
-			System.out.println(param);
-		}
-		long threadId = Thread.currentThread().getId();
+		long threadId = getThreadId();
 		threadStore.put(threadId, new InstrumentationThreadStatistics(threadId, params));
 
 		// TODO: return metrics based on these params
@@ -374,7 +374,7 @@ public class InstrumentationTool {
 	// This is called after solver is done
 	// Logs statistics from solver
 	public static synchronized Integer result() {
-		long threadId = Thread.currentThread().getId();
+		long threadId = getThreadId();
 		printToFile(threadId);
 		threadStore.remove(threadId);
 		return 123;
