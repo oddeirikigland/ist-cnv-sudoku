@@ -115,11 +115,10 @@ public class AmazonDynamoDBSample {
         System.out.println("Table Description: " + tableDescription);
     }
 
-    public static synchronized void updateSudokuDynamoDB(InstrumentationThreadStatistics instrumentedThreadStats) {
+    public static synchronized void updateSudokuDynamoDB(String tableName, InstrumentationThreadStatistics instrumentedThreadStats) {
         try {
             init();
 
-            String tableName = "cnv_sudoku";
             createTableIfMissing(dynamoDB, tableName);
 
             // Add stats from sudoku compute
@@ -163,9 +162,10 @@ public class AmazonDynamoDBSample {
     }
 
     public static synchronized void main(String[] args) throws Exception {
+        String tableName = "test_table";
         String[] parameters = {"asd", "asd2"};
         InstrumentationThreadStatistics stats = new InstrumentationThreadStatistics(123, parameters);
-        updateSudokuDynamoDB(stats);
+        updateSudokuDynamoDB(tableName, stats);
     }
 
     private static Map<String, AttributeValue> newItem(InstrumentationThreadStatistics stats) {

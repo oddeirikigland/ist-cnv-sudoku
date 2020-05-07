@@ -142,7 +142,7 @@ public class InstrumentationTool {
 	// Calls Logger to print results in log file
 	public static synchronized void printToFile(long threadId) {
 		Logger.logToFile(threadStore.get(threadId).resultToLog());
-		AmazonDynamoDBSample.updateSudokuDynamoDB(threadStore.get(threadId));
+		AmazonDynamoDBSample.updateSudokuDynamoDB("cnv_sudoku", threadStore.get(threadId));
 	}
 
 	// This method is called before the solver starts
