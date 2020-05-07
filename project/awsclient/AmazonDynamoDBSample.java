@@ -157,7 +157,7 @@ public class AmazonDynamoDBSample {
 
     public static void main(String[] args) throws Exception {
         String tableName = "test_table";
-        String[] parameters = {"asd", "asd2"};
+        String[] parameters = {"s=1", "un=1", "n1=1", "n2=1", "i=1"};
         InstrumentationThreadStatistics stats = new InstrumentationThreadStatistics(123, parameters);
         updateSudokuDynamoDB(tableName, stats);
     }
