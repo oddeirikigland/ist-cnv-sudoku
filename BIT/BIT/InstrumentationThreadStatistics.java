@@ -34,6 +34,8 @@ public class InstrumentationThreadStatistics {
 	long start_time;
 	long threadId;
 	String[] requestParams;
+	Date date;
+	DateFormat dateFormat;
 
 	// ICount
 	int i_count; // Instructions
@@ -61,10 +63,18 @@ public class InstrumentationThreadStatistics {
 	String branch_class_name;
 	String branch_method_name;
 
+	String s;
+	String un;
+	String n1;
+	String n2;
+	String i;
+
 	public InstrumentationThreadStatistics(long threadId, String[] requestParams) {
 		this.threadId = threadId;
 		this.requestParams = requestParams;
 		this.start_time = System.nanoTime();
+		this.date = new Date();
+		this.dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
 		this.i_count = 0;
 		this.b_count = 0;
@@ -83,11 +93,80 @@ public class InstrumentationThreadStatistics {
 		this.storecount = 0;
 		this.fieldloadcount = 0;
 		this.fieldstorecount = 0;
-    }
-    
+
+		this.s = "";
+		this.un = "";
+		this.n1 = "";
+		this.n2 = "";
+		this.i = "";
+		this.updateRequestParams();
+	}
+
+	void updateRequestParams() {
+		for (String param : this.requestParams) {
+			String[] arrOfStr = param.split("=", 2);
+			if (arrOfStr[0].equals("s")) this.s = String.valueOf(arrOfStr[1]);
+			else if (arrOfStr[0].equals("un")) this.un = String.valueOf(arrOfStr[1]);
+			else if (arrOfStr[0].equals("n1")) this.n1 = String.valueOf(arrOfStr[1]);
+			else if (arrOfStr[0].equals("n2")) this.n2 = String.valueOf(arrOfStr[1]);
+			else if (arrOfStr[0].equals("i")) this.i = String.valueOf(arrOfStr[1]);
+			else System.out.println("Parameter with unvalid name");
+		}
+	}
+	
+	// Getters for DynamoDB, needs to be String as return type    
     public String getThreadId() {
         return String.valueOf(this.threadId);
-    }
+	}
+	
+	public String getRequestDate() {
+		return String.valueOf(this.date);
+	}
+
+	public String getS() {
+		System.out.println(this.s);
+		return this.s;
+	}
+
+	public String getUn() {
+		System.out.println(this.un);
+		return this.un;
+	}
+
+	public String getN1() {
+		System.out.println(this.n1);
+		return this.n1;
+	}
+
+	public String getN2() {
+		System.out.println(this.n2);
+		return this.n2;
+	}
+
+	public String getI() {
+		System.out.println(this.i);
+		return this.i;
+	}
+
+	public String getMetric() {
+		return String.valueOf(
+			this.i_count +
+			this.b_count +
+			this.m_count +
+			this.dyn_bb_count +
+			this.dyn_instr_count +
+			this.dyn_method_count +
+			this.newcount +
+			this.newarraycount +
+			this.anewarraycount +
+			this.multianewarraycount +
+			this.loadcount +
+			this.storecount +
+			this.fieldloadcount +
+			this.fieldstorecount
+		);
+	}
+
 
 	public String resultToLog() {
 
@@ -98,16 +177,13 @@ public class InstrumentationThreadStatistics {
 //				branch_info_log += branch_info[i].class_name_ + '\t' + branch_info[i].method_name_ + '\t' + branch_info[i].pc_ + '\t' + branch_info[i].taken_ + '\t' + branch_info[i].not_taken_ + "\n";
 //			}
 //		}
-
-		DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
-		Date date = new Date();
 		long timeUsed = System.nanoTime() - this.start_time;
 		double timeUsedSeconds = (double) timeUsed / 1000000000;
 		return "\n==============================================" 	+	 
-				"\nLogged at: " + dateFormat.format(date)			+ 
+				"\nLogged at: " + this.dateFormat.format(this.date)			+ 
 				"\nSeconds used: " + timeUsedSeconds +
 				"\nThread ID: " + this.threadId +
-				"\nRequest params: " + this.logParams(this.requestParams) +
+				"\nRequest params: " + this.logParams() +
 				// "\nInstructions: " + this.i_count +
 				// "\nBasic blocks: " + this.b_count +
 				// "\nMethods: " + this.m_count +
@@ -131,9 +207,9 @@ public class InstrumentationThreadStatistics {
 		;
 	}
 
-	String logParams(String[] params) {
+	public String logParams() {
 		String out = "";
-		for (String param : params) {
+		for (String param : this.requestParams) {
 			out += param + " ";
 		}
 		return out;

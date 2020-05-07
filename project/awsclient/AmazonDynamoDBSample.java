@@ -100,8 +100,8 @@ public class AmazonDynamoDBSample {
     private static synchronized void createTableIfMissing(AmazonDynamoDB dynamoDB, String tableName) throws Exception {
         // Create a table with a primary hash key named 'name', which holds a string
         CreateTableRequest createTableRequest = new CreateTableRequest().withTableName(tableName)
-            .withKeySchema(new KeySchemaElement().withAttributeName("name").withKeyType(KeyType.HASH))
-            .withAttributeDefinitions(new AttributeDefinition().withAttributeName("name").withAttributeType(ScalarAttributeType.S))
+            .withKeySchema(new KeySchemaElement().withAttributeName("parameters").withKeyType(KeyType.HASH))
+            .withAttributeDefinitions(new AttributeDefinition().withAttributeName("parameters").withAttributeType(ScalarAttributeType.S))
             .withProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
 
         // Create table if it does not exist yet
@@ -126,12 +126,6 @@ public class AmazonDynamoDBSample {
             PutItemRequest putItemRequest = new PutItemRequest(tableName, item);
             PutItemResult putItemResult = dynamoDB.putItem(putItemRequest);
             System.out.println("Result: " + putItemResult);
-
-            // // Add another item
-            // item = newItem("Airplane", 1980, "*****", "James", "Billy Bob");
-            // putItemRequest = new PutItemRequest(tableName, item);
-            // putItemResult = dynamoDB.putItem(putItemRequest);
-            // System.out.println("Result: " + putItemResult);
 
             // // Scan items for movies with a year attribute greater than 1985
             // HashMap<String, Condition> scanFilter = new HashMap<String, Condition>();
@@ -161,21 +155,23 @@ public class AmazonDynamoDBSample {
         }
     }
 
-    public static synchronized void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         String tableName = "test_table";
         String[] parameters = {"asd", "asd2"};
         InstrumentationThreadStatistics stats = new InstrumentationThreadStatistics(123, parameters);
         updateSudokuDynamoDB(tableName, stats);
     }
 
-    private static Map<String, AttributeValue> newItem(InstrumentationThreadStatistics stats) {
+    private static synchronized Map<String, AttributeValue> newItem(InstrumentationThreadStatistics stats) {
         Map<String, AttributeValue> item = new HashMap<String, AttributeValue>();
-        // item.put("name", new AttributeValue(name));
-        // item.put("year", new AttributeValue().withN(Integer.toString(year)));
-        // item.put("rating", new AttributeValue(rating));
-        // item.put("fans", new AttributeValue().withSS(fans));
-        item.put("threadId", new AttributeValue(stats.getThreadId()));
-        item.put("name", new AttributeValue("hello"));
+        item.put("parameters", new AttributeValue(stats.logParams())); // This is the unique key
+        item.put("s", new AttributeValue(stats.getS()));
+        item.put("un", new AttributeValue(stats.getUn()));
+        item.put("n1", new AttributeValue(stats.getN1()));
+        item.put("n2", new AttributeValue(stats.getN2()));
+        item.put("i", new AttributeValue(stats.getI()));
+        item.put("lastRequestForParams", new AttributeValue(stats.getRequestDate()));
+        item.put("metric_value", new AttributeValue(stats.getMetric()));
 
         return item;
     }
