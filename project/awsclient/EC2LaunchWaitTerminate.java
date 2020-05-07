@@ -1,3 +1,5 @@
+package awsclient;
+
 /* 2016-20 Extended by Luis Veiga and Joao Garcia */
 /*
  * Copyright 2010-2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.

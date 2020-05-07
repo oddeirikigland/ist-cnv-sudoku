@@ -1,3 +1,4 @@
+package awsclient;
 /*
  * Copyright 2012-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  *
@@ -40,6 +41,8 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 
+import BIT.InstrumentationThreadStatistics;
+
 /**
  * This sample demonstrates how to perform a few simple operations with the
  * Amazon DynamoDB service.
@@ -72,7 +75,7 @@ public class AmazonDynamoDBSample {
      * @see com.amazonaws.auth.ProfilesConfigFile
      * @see com.amazonaws.ClientConfiguration
      */
-    private static void init() throws Exception {
+    private static synchronized void init() throws Exception {
         /*
          * The ProfileCredentialsProvider will return your [default]
          * credential profile by reading from the credentials file located at
@@ -94,49 +97,52 @@ public class AmazonDynamoDBSample {
             .build();
     }
 
-    public static void main(String[] args) throws Exception {
-        init();
+    private static synchronized void createTableIfMissing(AmazonDynamoDB dynamoDB, String tableName) throws Exception {
+        // Create a table with a primary hash key named 'name', which holds a string
+        CreateTableRequest createTableRequest = new CreateTableRequest().withTableName(tableName)
+            .withKeySchema(new KeySchemaElement().withAttributeName("name").withKeyType(KeyType.HASH))
+            .withAttributeDefinitions(new AttributeDefinition().withAttributeName("name").withAttributeType(ScalarAttributeType.S))
+            .withProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
 
+        // Create table if it does not exist yet
+        TableUtils.createTableIfNotExists(dynamoDB, createTableRequest);
+        // wait for the table to move into ACTIVE state
+        TableUtils.waitUntilActive(dynamoDB, tableName);
+
+        // Describe our new table
+        DescribeTableRequest describeTableRequest = new DescribeTableRequest().withTableName(tableName);
+        TableDescription tableDescription = dynamoDB.describeTable(describeTableRequest).getTable();
+        System.out.println("Table Description: " + tableDescription);
+    }
+
+    public static synchronized void updateSudokuDynamoDB(InstrumentationThreadStatistics instrumentedThreadStats) {
         try {
-            String tableName = "my-favorite-movies-table";
+            init();
 
-            // Create a table with a primary hash key named 'name', which holds a string
-            CreateTableRequest createTableRequest = new CreateTableRequest().withTableName(tableName)
-                .withKeySchema(new KeySchemaElement().withAttributeName("name").withKeyType(KeyType.HASH))
-                .withAttributeDefinitions(new AttributeDefinition().withAttributeName("name").withAttributeType(ScalarAttributeType.S))
-                .withProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
+            String tableName = "cnv_sudoku";
+            createTableIfMissing(dynamoDB, tableName);
 
-            // Create table if it does not exist yet
-            TableUtils.createTableIfNotExists(dynamoDB, createTableRequest);
-            // wait for the table to move into ACTIVE state
-            TableUtils.waitUntilActive(dynamoDB, tableName);
-
-            // Describe our new table
-            DescribeTableRequest describeTableRequest = new DescribeTableRequest().withTableName(tableName);
-            TableDescription tableDescription = dynamoDB.describeTable(describeTableRequest).getTable();
-            System.out.println("Table Description: " + tableDescription);
-
-            // Add an item
-            Map<String, AttributeValue> item = newItem("Bill & Ted's Excellent Adventure", 2020, "****", "James", "Sara");
+            // Add stats from sudoku compute
+            Map<String, AttributeValue> item = newItem(instrumentedThreadStats);
             PutItemRequest putItemRequest = new PutItemRequest(tableName, item);
             PutItemResult putItemResult = dynamoDB.putItem(putItemRequest);
             System.out.println("Result: " + putItemResult);
 
-            // Add another item
-            item = newItem("Airplane", 1980, "*****", "James", "Billy Bob");
-            putItemRequest = new PutItemRequest(tableName, item);
-            putItemResult = dynamoDB.putItem(putItemRequest);
-            System.out.println("Result: " + putItemResult);
+            // // Add another item
+            // item = newItem("Airplane", 1980, "*****", "James", "Billy Bob");
+            // putItemRequest = new PutItemRequest(tableName, item);
+            // putItemResult = dynamoDB.putItem(putItemRequest);
+            // System.out.println("Result: " + putItemResult);
 
-            // Scan items for movies with a year attribute greater than 1985
-            HashMap<String, Condition> scanFilter = new HashMap<String, Condition>();
-            Condition condition = new Condition()
-                .withComparisonOperator(ComparisonOperator.GT.toString())
-                .withAttributeValueList(new AttributeValue().withN("1985"));
-            scanFilter.put("year", condition);
-            ScanRequest scanRequest = new ScanRequest(tableName).withScanFilter(scanFilter);
-            ScanResult scanResult = dynamoDB.scan(scanRequest);
-            System.out.println("Result: " + scanResult);
+            // // Scan items for movies with a year attribute greater than 1985
+            // HashMap<String, Condition> scanFilter = new HashMap<String, Condition>();
+            // Condition condition = new Condition()
+            //     .withComparisonOperator(ComparisonOperator.GT.toString())
+            //     .withAttributeValueList(new AttributeValue().withN("1985"));
+            // scanFilter.put("year", condition);
+            // ScanRequest scanRequest = new ScanRequest(tableName).withScanFilter(scanFilter);
+            // ScanResult scanResult = dynamoDB.scan(scanRequest);
+            // System.out.println("Result: " + scanResult);
 
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "
@@ -151,15 +157,25 @@ public class AmazonDynamoDBSample {
                     + "a serious internal problem while trying to communicate with AWS, "
                     + "such as not being able to access the network.");
             System.out.println("Error Message: " + ace.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private static Map<String, AttributeValue> newItem(String name, int year, String rating, String... fans) {
+    public static synchronized void main(String[] args) throws Exception {
+        String[] parameters = {"asd", "asd2"};
+        InstrumentationThreadStatistics stats = new InstrumentationThreadStatistics(123, parameters);
+        updateSudokuDynamoDB(stats);
+    }
+
+    private static Map<String, AttributeValue> newItem(InstrumentationThreadStatistics stats) {
         Map<String, AttributeValue> item = new HashMap<String, AttributeValue>();
-        item.put("name", new AttributeValue(name));
-        item.put("year", new AttributeValue().withN(Integer.toString(year)));
-        item.put("rating", new AttributeValue(rating));
-        item.put("fans", new AttributeValue().withSS(fans));
+        // item.put("name", new AttributeValue(name));
+        // item.put("year", new AttributeValue().withN(Integer.toString(year)));
+        // item.put("rating", new AttributeValue(rating));
+        // item.put("fans", new AttributeValue().withSS(fans));
+        item.put("threadId", new AttributeValue(stats.getThreadId()));
+        item.put("name", new AttributeValue("hello"));
 
         return item;
     }

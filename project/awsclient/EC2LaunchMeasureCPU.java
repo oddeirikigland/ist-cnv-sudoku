@@ -1,3 +1,5 @@
+package awsclient;
+
 /* 2016-20 Edited by Luis Veiga and Joao Garcia */
 import java.util.HashSet;
 import java.util.List;
