@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.text.DateFormat;
 
 import functions.Logger;
+import aws.AmazonDynamoDBSample;
 
 class StatisticsBranch // needed here because i could not import it properly
 {

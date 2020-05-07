@@ -15,6 +15,12 @@ chmod +x setup.sh
 source setup.sh configure
 ```
 
+To configure with aws java sdk
+
+```bash
+source setup.sh configure aws-cli
+```
+
 ## Compile sources
 
 ```bash
