@@ -15,6 +15,12 @@ chmod +x setup.sh
 source setup.sh configure
 ```
 
+To configure with aws java sdk
+
+```bash
+source setup.sh configure aws-cli
+```
+
 ## Compile sources
 
 ```bash
@@ -42,3 +48,11 @@ Use one of these commands to see a simple use case
 source setup.sh InstrumentationToolHello
 source setup.sh InstrumentationToolSolver
 ```
+
+To test DynamoDB connection
+
+```bash
+java awsclient.AmazonDynamoDBSample
+```
+
+Check your DynamoDB console, you should now have a table with an item.
