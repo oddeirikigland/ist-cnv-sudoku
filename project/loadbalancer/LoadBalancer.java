@@ -75,17 +75,6 @@ public class LoadBalancer {
 
     private static void createDedicatedInstance() {
         try {
-            DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
-            List<Reservation> reservations = describeInstancesRequest.getReservations();
-            Set<Instance> instances = new HashSet<Instance>();
-
-            for (Reservation reservation : reservations) {
-                instances.addAll(reservation.getInstances());
-            }
-
-            System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
-            System.out.println("Starting a new instance.");
-
             RunInstancesRequest runInstancesRequest =
                 new RunInstancesRequest();
 
@@ -94,30 +83,14 @@ public class LoadBalancer {
                                 .withInstanceType("t2.micro")
                                 .withMinCount(1)
                                 .withMaxCount(1)
-                                .withKeyName("cloud-compute-lab3")
-                                .withSecurityGroups("launch-wizard-1-cloud-compute");
+                                .withKeyName("CNV-AWS-lab")
+                                .withSecurityGroups("CNV-Project+http");
             
             RunInstancesResult runInstancesResult =
                 ec2Client.runInstances(runInstancesRequest);
             
             String newInstanceId = runInstancesResult.getReservation().getInstances()
                                         .get(0).getInstanceId();
-            describeInstancesRequest = ec2Client.describeInstances();
-            reservations = describeInstancesRequest.getReservations();
-            instances = new HashSet<Instance>();
-
-            for (Reservation reservation : reservations) {
-                instances.addAll(reservation.getInstances());
-            }
-
-            System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
-            // System.out.println("Waiting 1 minute. See your instance in the AWS console...");
-            // Thread.sleep(60000);
-            // System.out.println("Terminating the instance.");
-            // TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
-            // termInstanceReq.withInstanceIds(newInstanceId);
-            // ec2Client.terminateInstances(termInstanceReq);
-
         } catch (AmazonServiceException ase) {
             System.out.println("Caught Exception: " + ase.getMessage());
             System.out.println("Reponse Status Code: " + ase.getStatusCode());
@@ -128,14 +101,18 @@ public class LoadBalancer {
     }
 
     public static void deployLoadBalancer() {
-        final HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        try {
+            final HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
 
-        server.createContext("/redirectrequest", new RequestHandler());
+            server.createContext("/redirectrequest", new RequestHandler());
 
-        server.setExecutor(Executors.newCachedThreadPool());
-		server.start();
+            server.setExecutor(Executors.newCachedThreadPool());
+            server.start();
 
-		System.out.println(server.getAddress().toString());
+            System.out.println(server.getAddress().toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 	public static void main(final String[] args) throws Exception {
@@ -144,6 +121,12 @@ public class LoadBalancer {
         // deployLoadBalancer();
     }
 
+    /*
+        Check DB with request to see how heavy it is approximately.
+        Then pass the request on to a solver instance e.g.:
+            - Solver running a light request can handle another light request
+            - Heavy request would require another instance
+    */
     static class RequestHandler implements HttpHandler {
 		@Override
 		public void handle(final HttpExchange t) throws IOException {
