@@ -155,6 +155,10 @@ public class AmazonDynamoDBSample {
         }
     }
 
+    public static int getMetric() {
+        return 1;
+    }
+
     public static void main(String[] args) throws Exception {
         String tableName = "test_table";
         String[] parameters = {"s=1", "un=1", "n1=1", "n2=1", "i=1"};
