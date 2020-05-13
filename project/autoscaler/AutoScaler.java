@@ -16,6 +16,7 @@ package autoscaler;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Date;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -41,6 +42,13 @@ import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.MonitorInstancesRequest;
 import com.amazonaws.services.ec2.model.UnmonitorInstancesRequest;
 
+import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
+import com.amazonaws.services.cloudwatch.model.Dimension;
+import com.amazonaws.services.cloudwatch.model.Datapoint;
+import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
+import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsResult;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -54,6 +62,7 @@ import pt.ulisboa.tecnico.cnv.server.WebServer;
 
 public class AutoScaler {
     static AmazonEC2 ec2Client;
+    static AmazonCloudWatch cloudWatch;
 
     public static void initEc2Client() throws Exception {
         ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
@@ -70,6 +79,11 @@ public class AutoScaler {
             .withCredentials(credentialsProvider)
             .withRegion("us-east-1")
             .build();
+
+        cloudWatch = AmazonCloudWatchClientBuilder.standard()
+            .withCredentials(credentialsProvider)
+            .withRegion("us-east-1")
+            .build();
     }
 
     public static void checkInstanceCapacities() {
@@ -83,6 +97,41 @@ public class AutoScaler {
 
         System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
 
+        long offsetInMilliseconds = 1000 * 60 * 10;
+        Dimension instanceDimension = new Dimension();
+        instanceDimension.setName("InstanceId");
+        List<Dimension> dims = new ArrayList<Dimension>();
+        dims.add(instanceDimension);
+        
+        for (Instance instance : instances) {
+            String name = instance.getInstanceId();
+            String state = instance.getState().getName();
+        
+            if (state.equals("running")) { 
+                System.out.println("running instance id = " + name);
+                instanceDimension.setValue(name);
+                GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
+                    .withStartTime(new Date(new Date().getTime() - offsetInMilliseconds))
+                    .withNamespace("AWS/EC2")
+                    .withPeriod(60)
+                    .withMetricName("CPUUtilization")
+                    .withStatistics("Average")
+                    .withDimensions(instanceDimension)
+                    .withEndTime(new Date());
+                GetMetricStatisticsResult getMetricStatisticsResult = 
+                    cloudWatch.getMetricStatistics(request);
+                List<Datapoint> datapoints = getMetricStatisticsResult.getDatapoints();
+               
+                for (Datapoint dp : datapoints) {
+                    System.out.println(" CPU utilization for instance " + name +
+                    " = " + dp.getAverage());
+                }
+            }
+            else {
+                System.out.println("instance id = " + name);
+            }
+            System.out.println("Instance State : " + state +".");
+        }
         // TODO: Logic for determining if workload requires a new instance
         // if workload > available capacity:
         //      createInstance()
@@ -147,5 +196,7 @@ public class AutoScaler {
     public static void main(final String[] args) throws Exception {
         // TODO: Should use same EC2 client as load balancer I think       
         initEc2Client();
+
+        checkInstanceCapacities();
     }
 }

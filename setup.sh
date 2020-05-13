@@ -56,3 +56,8 @@ if test "$1" = "LoadBalancer" ;
 then
     java loadbalancer.LoadBalancer
 fi
+
+if test "$1" = "AutoScaler" ;
+then 
+    java autoscaler.AutoScaler
+fi
