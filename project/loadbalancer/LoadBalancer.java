@@ -73,33 +73,6 @@ public class LoadBalancer {
             .build();
     }
 
-    private static void createDedicatedInstance() {
-        try {
-            RunInstancesRequest runInstancesRequest =
-                new RunInstancesRequest();
-
-            /* TODO: configure to use your AMI, key and security group */
-            runInstancesRequest.withImageId("ami-0889dae1607d06a32")
-                                .withInstanceType("t2.micro")
-                                .withMinCount(1)
-                                .withMaxCount(1)
-                                .withKeyName("CNV-AWS-lab")
-                                .withSecurityGroups("CNV-Project+http");
-            
-            RunInstancesResult runInstancesResult =
-                ec2Client.runInstances(runInstancesRequest);
-            
-            String newInstanceId = runInstancesResult.getReservation().getInstances()
-                                        .get(0).getInstanceId();
-        } catch (AmazonServiceException ase) {
-            System.out.println("Caught Exception: " + ase.getMessage());
-            System.out.println("Reponse Status Code: " + ase.getStatusCode());
-            System.out.println("Error Code: " + ase.getErrorCode());
-            System.out.println("Request ID: " + ase.getRequestId());
-        }
-        
-    }
-
     public static void deployLoadBalancer() {
         try {
             final HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
@@ -116,9 +89,8 @@ public class LoadBalancer {
     }
 
 	public static void main(final String[] args) throws Exception {
-        initEc2Client();
-        createDedicatedInstance();
-        // deployLoadBalancer();
+        initEc2Client();    
+        deployLoadBalancer();
     }
 
     /*
