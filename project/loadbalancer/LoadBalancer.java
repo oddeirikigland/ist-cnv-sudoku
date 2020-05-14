@@ -77,7 +77,7 @@ public class LoadBalancer {
         try {
             final HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
 
-            server.createContext("/redirectrequest", new RequestHandler());
+            server.createContext("/sudoku", new RequestHandler());
 
             server.setExecutor(Executors.newCachedThreadPool());
             server.start();
@@ -133,7 +133,33 @@ public class LoadBalancer {
 			for(String arg: newArgs) {
 				args[i] = arg;
 				i++;
-			}
+            }
+            
+            DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
+            List<Reservation> reservations = describeInstancesRequest.getReservations();
+            Set<Instance> instances = new HashSet<Instance>();
+    
+            for (Reservation reservation : reservations) {
+                instances.addAll(reservation.getInstances());
+            }
+    
+            System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
+
+            System.out.println("Own address:");
+            System.out.println(t.getLocalAddress());
+
+            System.out.println("Public DNS:");
+            for (Instance instance : instances) {
+                System.out.println(instance.getPublicDnsName());
+                System.out.println(instance.getPublicIpAddress());
+            }
+
+            // TODO: Decide which instance is preferred
+            // TODO: Not sure on the port we decided for the solver instances, but I thought it was 80.
+            InetSocketAddress designatedInstanceAddress = new InetSocketAddress(instances[0].getPublicDnsName(), 80);
+
+			final Headers hdrs = t.getResponseHeaders();
+            
 
 			// // Send response to browser.
 			// final Headers hdrs = t.getResponseHeaders();
