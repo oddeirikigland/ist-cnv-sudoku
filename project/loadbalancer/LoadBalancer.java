@@ -160,6 +160,10 @@ public class LoadBalancer {
 
 			final Headers hdrs = t.getResponseHeaders();
             
+            
+
+            // TODO: Get response from solver instance and send this response to browser
+            // SEE COMMENTED CODE BELOW
 
 			// // Send response to browser.
 			// final Headers hdrs = t.getResponseHeaders();
