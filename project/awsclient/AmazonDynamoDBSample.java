@@ -177,6 +177,7 @@ public class AmazonDynamoDBSample {
         item.put("anewarraycount", new AttributeValue().withN((stats.get_anewarraycount())));
         item.put("multianewarraycount", new AttributeValue().withN((stats.get_multianewarraycount())));
         item.put("storecount", new AttributeValue().withN((stats.get_storecount())));
+        item.put("micro_seconds_used", new AttributeValue().withN((stats.getMicroSecondsUsed())));
 
         return item;
     }

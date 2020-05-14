@@ -209,6 +209,10 @@ public class InstrumentationThreadStatistics {
 		);
 	}
 
+	public String getMicroSecondsUsed() {
+		return String.valueOf(((double) System.nanoTime() - this.start_time) / 1000000);
+	}
+
 
 	public String resultToLog() {
 
