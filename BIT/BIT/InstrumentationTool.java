@@ -11,10 +11,7 @@ import awsclient.AmazonDynamoDBSample;
 
 public class InstrumentationTool {
 	
-	//'dyn_instr_count', 'loadcount', 'fieldstorecount', 'newcount', 'newarraycount', 'fieldloadcount'
-
 	private static PrintStream out = null;
-	// private static int i_count = 0, b_count = 0, m_count = 0; // in use??
 	private static HashMap<Long, InstrumentationThreadStatistics> threadStore = new HashMap<Long, InstrumentationThreadStatistics>();
 
 	/*
@@ -63,19 +60,10 @@ public class InstrumentationTool {
 						Instruction instr = (Instruction) instrs.nextElement();
 						int opcode = instr.getOpcode();
 
-//						if (opcode == InstructionTable.getfield)
-//							instr.addBefore("BIT/InstrumentationTool", "LSFieldCount", new Integer(0));
-//						else if (opcode == InstructionTable.putfield)
-//							instr.addBefore("BIT/InstrumentationTool", "LSFieldCount", new Integer(1));
-//						else {
 						short instr_type = InstructionTable.InstructionTypeTable[opcode];
-//							if (instr_type == InstructionTable.LOAD_INSTRUCTION) {
-//								instr.addBefore("BIT/InstrumentationTool", "LSCount", new Integer(0));
-//							} else
 						if (instr_type == InstructionTable.STORE_INSTRUCTION) {
 							instr.addBefore("BIT/InstrumentationTool", "LSCount", new Integer(1));
 						}
-//						}
 					} // LOAD STORE
 				}
 
@@ -88,14 +76,6 @@ public class InstrumentationTool {
 		return Thread.currentThread().getId();
 	}
 
-//	public static synchronized void count(int incr) {
-//		threadStore.get(getThreadId()).count(incr);
-//	}
-//
-//	public static synchronized void mcount(int incr) {
-//		threadStore.get(getThreadId()).mcount();
-//	}
-
 	public static synchronized void dynInstrCount(int incr) {
 		threadStore.get(getThreadId()).dynInstrCount(incr);
 	}
@@ -107,10 +87,6 @@ public class InstrumentationTool {
 	public static synchronized void allocCount(int type) {
 		threadStore.get(getThreadId()).allocCount(type);
 	}
-
-//	public static synchronized void LSFieldCount(int type) {
-//		threadStore.get(getThreadId()).LSFieldCount(type);
-//	}
 
 	public static synchronized void LSCount(int type) {
 		threadStore.get(getThreadId()).LSCount(type);
@@ -141,3 +117,4 @@ public class InstrumentationTool {
 		return 123;
 	}
 }
+
