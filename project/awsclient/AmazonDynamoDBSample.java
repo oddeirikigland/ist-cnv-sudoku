@@ -172,20 +172,11 @@ public class AmazonDynamoDBSample {
         item.put("i", new AttributeValue(stats.getI()));
         item.put("lastRequestForParams", new AttributeValue(stats.getRequestDate()));
         item.put("metric_value", new AttributeValue().withN((stats.getMetric())));
-        item.put("i_count", new AttributeValue().withN((stats.get_i_count())));
-        item.put("b_count", new AttributeValue().withN((stats.get_b_count())));
-        item.put("m_count", new AttributeValue().withN((stats.get_m_count())));
         item.put("dyn_bb_count", new AttributeValue().withN((stats.get_dyn_bb_count())));
-        item.put("dyn_instr_count", new AttributeValue().withN(stats.get_dyn_instr_count()));
         item.put("dyn_method_count", new AttributeValue().withN((stats.get_dyn_method_count())));
-        item.put("newcount", new AttributeValue().withN((stats.get_newcount())));
-        item.put("newarraycount", new AttributeValue().withN((stats.get_newarraycount())));
         item.put("anewarraycount", new AttributeValue().withN((stats.get_anewarraycount())));
         item.put("multianewarraycount", new AttributeValue().withN((stats.get_multianewarraycount())));
-        item.put("loadcount", new AttributeValue().withN((stats.get_loadcount())));
         item.put("storecount", new AttributeValue().withN((stats.get_storecount())));
-        item.put("fieldloadcount", new AttributeValue().withN((stats.get_fieldloadcount())));
-        item.put("fieldstorecount", new AttributeValue().withN((stats.get_fieldstorecount())));
 
         return item;
     }
