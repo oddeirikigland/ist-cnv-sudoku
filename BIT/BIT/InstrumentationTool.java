@@ -10,6 +10,8 @@ import awsclient.AmazonDynamoDBSample;
 
 
 public class InstrumentationTool {
+	
+	//'dyn_instr_count', 'loadcount', 'fieldstorecount', 'newcount', 'newarraycount', 'fieldloadcount'
 
 	private static PrintStream out = null;
 	// private static int i_count = 0, b_count = 0, m_count = 0; // in use??
@@ -51,9 +53,7 @@ public class InstrumentationTool {
 						Instruction instr = (Instruction) instrs.nextElement();
 						int opcode = instr.getOpcode();
 
-						if ((opcode == InstructionTable.NEW) || (opcode == InstructionTable.newarray)
-								|| (opcode == InstructionTable.anewarray)
-								|| (opcode == InstructionTable.multianewarray)) {
+						if ((opcode == InstructionTable.anewarray) || (opcode == InstructionTable.multianewarray)) {
 							instr.addBefore("BIT/InstrumentationTool", "allocCount", new Integer(opcode));
 						}
 					} // ALLOC
@@ -63,18 +63,19 @@ public class InstrumentationTool {
 						Instruction instr = (Instruction) instrs.nextElement();
 						int opcode = instr.getOpcode();
 
-						if (opcode == InstructionTable.getfield)
-							instr.addBefore("BIT/InstrumentationTool", "LSFieldCount", new Integer(0));
-						else if (opcode == InstructionTable.putfield)
-							instr.addBefore("BIT/InstrumentationTool", "LSFieldCount", new Integer(1));
-						else {
-							short instr_type = InstructionTable.InstructionTypeTable[opcode];
-							if (instr_type == InstructionTable.LOAD_INSTRUCTION) {
-								instr.addBefore("BIT/InstrumentationTool", "LSCount", new Integer(0));
-							} else if (instr_type == InstructionTable.STORE_INSTRUCTION) {
-								instr.addBefore("BIT/InstrumentationTool", "LSCount", new Integer(1));
-							}
+//						if (opcode == InstructionTable.getfield)
+//							instr.addBefore("BIT/InstrumentationTool", "LSFieldCount", new Integer(0));
+//						else if (opcode == InstructionTable.putfield)
+//							instr.addBefore("BIT/InstrumentationTool", "LSFieldCount", new Integer(1));
+//						else {
+						short instr_type = InstructionTable.InstructionTypeTable[opcode];
+//							if (instr_type == InstructionTable.LOAD_INSTRUCTION) {
+//								instr.addBefore("BIT/InstrumentationTool", "LSCount", new Integer(0));
+//							} else
+						if (instr_type == InstructionTable.STORE_INSTRUCTION) {
+							instr.addBefore("BIT/InstrumentationTool", "LSCount", new Integer(1));
 						}
+//						}
 					} // LOAD STORE
 				}
 
@@ -87,13 +88,13 @@ public class InstrumentationTool {
 		return Thread.currentThread().getId();
 	}
 
-	public static synchronized void count(int incr) {
-		threadStore.get(getThreadId()).count(incr);
-	}
-
-	public static synchronized void mcount(int incr) {
-		threadStore.get(getThreadId()).mcount();
-	}
+//	public static synchronized void count(int incr) {
+//		threadStore.get(getThreadId()).count(incr);
+//	}
+//
+//	public static synchronized void mcount(int incr) {
+//		threadStore.get(getThreadId()).mcount();
+//	}
 
 	public static synchronized void dynInstrCount(int incr) {
 		threadStore.get(getThreadId()).dynInstrCount(incr);
@@ -107,38 +108,15 @@ public class InstrumentationTool {
 		threadStore.get(getThreadId()).allocCount(type);
 	}
 
-	public static synchronized void LSFieldCount(int type) {
-		threadStore.get(getThreadId()).LSFieldCount(type);
-	}
+//	public static synchronized void LSFieldCount(int type) {
+//		threadStore.get(getThreadId()).LSFieldCount(type);
+//	}
 
 	public static synchronized void LSCount(int type) {
 		threadStore.get(getThreadId()).LSCount(type);
 	}
 
-	public static synchronized void setBranchClassName(String name) {
-		threadStore.get(getThreadId()).setBranchClassName(name);
-	}
-
-	public static synchronized void setBranchMethodName(String name) {
-		threadStore.get(getThreadId()).setBranchMethodName(name);
-	}
-
-	public static synchronized void setBranchPC(int pc) {
-		threadStore.get(getThreadId()).setBranchPC(pc);
-	}
-
-	public static synchronized void branchInit(int n) {
-		threadStore.get(getThreadId()).branchInit(n);
-	}
-
-	public static synchronized void updateBranchNumber(int n) {
-		threadStore.get(getThreadId()).updateBranchNumber(n);
-	}
-
-	public static synchronized void updateBranchOutcome(int br_outcome) {
-		threadStore.get(getThreadId()).updateBranchOutcome(br_outcome);
-	}
-
+	
 	// Calls Logger to print results in log file
 	public static synchronized void printToFile(long threadId) {
 		Logger.logToFile(threadStore.get(threadId).resultToLog());
