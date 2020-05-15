@@ -100,12 +100,14 @@ public class InstrumentationTool {
 	}
 
 	// This method is called before the solver starts
-	public static synchronized Integer checkParams(String[] params) {
+	public static synchronized float checkParams(String[] params) {
 		long threadId = getThreadId();
 		threadStore.put(threadId, new InstrumentationThreadStatistics(threadId, params));
 
-		// TODO: return metrics based on these params
-		return 333;
+		// Example on how to get the metric from dynamodb
+		// TODO: In the future this function will be called from load balancer, no need to call it here then
+		InstrumentationThreadStatistics stats = threadStore.get(threadId);
+		return AmazonDynamoDBSample.getMetric("cnv_sudoku", stats.getS(), stats.getUn(), stats.getN1(), stats.getN2(), stats.getI());
 	}
 
 	// This is called after solver is done

@@ -155,7 +155,7 @@ public class AmazonDynamoDBSample {
         }
     }
 
-    public static int getMetric(String tableName, String s, String un, String n1, String n2, String i) {
+    public static float getMetric(String tableName, String s, String un, String n1, String n2, String i) {
         try {
             init();
 
@@ -194,7 +194,7 @@ public class AmazonDynamoDBSample {
             System.out.println("Result: " + scanResult);
 
             if (scanResult.getCount() > 0) {
-                int metric_value = Integer.valueOf(scanResult.getItems().get(0).get("metric_value").getN());
+                float metric_value = Float.valueOf(scanResult.getItems().get(0).get("metric_value").getN());
                 return metric_value;
             }
         } catch (AmazonServiceException ase) {
@@ -237,9 +237,6 @@ public class AmazonDynamoDBSample {
         item.put("metric_value", new AttributeValue().withN((stats.getMetric())));
         item.put("dyn_bb_count", new AttributeValue().withN((stats.get_dyn_bb_count())));
         item.put("dyn_method_count", new AttributeValue().withN((stats.get_dyn_method_count())));
-        item.put("anewarraycount", new AttributeValue().withN((stats.get_anewarraycount())));
-        item.put("multianewarraycount", new AttributeValue().withN((stats.get_multianewarraycount())));
-        item.put("storecount", new AttributeValue().withN((stats.get_storecount())));
         item.put("micro_seconds_used", new AttributeValue().withN((stats.getMicroSecondsUsed())));
 
         return item;
