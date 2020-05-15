@@ -156,7 +156,8 @@ public class LoadBalancer {
 
             // TODO: Decide which instance is preferred
             // TODO: Not sure on the port we decided for the solver instances, but I thought it was 80.
-            InetSocketAddress designatedInstanceAddress = new InetSocketAddress(instances[0].getPublicDnsName(), 80);
+            // PLACEHOLDER: .toArray()[0]
+            // InetSocketAddress designatedInstanceAddress = new InetSocketAddress(instances.toArray()[0].getPublicDnsName(), 80);
 
 			final Headers hdrs = t.getResponseHeaders();
             

@@ -14,9 +14,14 @@ package autoscaler;
  * permissions and limitations under the License.
  */
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.List;
+import java.util.Stack;
 import java.util.Date;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+
+import static java.util.concurrent.TimeUnit.*;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -63,8 +68,32 @@ import pt.ulisboa.tecnico.cnv.server.WebServer;
 public class AutoScaler {
     static AmazonEC2 ec2Client;
     static AmazonCloudWatch cloudWatch;
+    static Double minCpuUsage;
+    static Double maxCpuUsage;
+    static Integer minInstances;
+    static Integer maxInstances;
 
-    public static void initEc2Client() throws Exception {
+    public static void main(final String[] args) throws Exception {
+        // TODO: Parametrize
+        // max CPU, min CPU, min Instances, max Instances
+        init(40.0, 60.0, 1, 3);
+
+        ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
+
+        // Delay of a minute
+        autoScalerService.scheduleWithFixedDelay(new InstanceChecker(), 0, 60, SECONDS);
+    }
+
+    private static class InstanceChecker implements Runnable { 
+  
+        public void run() 
+        { 
+            System.out.println("Checking instance CPU usage...");
+            checkInstanceCapacities();
+        } 
+    } 
+
+    public static void init(Double minCpu, Double maxCpu, Integer minInst, Integer maxInst) throws Exception {
         ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
         try {
             credentialsProvider.getCredentials();
@@ -84,62 +113,89 @@ public class AutoScaler {
             .withCredentials(credentialsProvider)
             .withRegion("us-east-1")
             .build();
+
+        minCpuUsage = minCpu;
+        maxCpuUsage = maxCpu;
+        minInstances = minInst;
+        maxInstances = maxInst;
     }
 
+    /**
+     * Check the CPU usage of running instances and create new or terminate instances accordingly.
+     */
     public static void checkInstanceCapacities() {
-        DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
-        List<Reservation> reservations = describeInstancesRequest.getReservations();
-        Set<Instance> instances = new HashSet<Instance>();
+        try {
+            DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
+            List<Reservation> reservations = describeInstancesRequest.getReservations();
+            Set<Instance> instances = new HashSet<Instance>();
 
-        for (Reservation reservation : reservations) {
-            instances.addAll(reservation.getInstances());
-        }
+            for (Reservation reservation : reservations) {
+                instances.addAll(reservation.getInstances());
+            }
 
-        System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
+            System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
 
-        long offsetInMilliseconds = 1000 * 60 * 10;
-        Dimension instanceDimension = new Dimension();
-        instanceDimension.setName("InstanceId");
-        List<Dimension> dims = new ArrayList<Dimension>();
-        dims.add(instanceDimension);
-        
-        for (Instance instance : instances) {
-            String name = instance.getInstanceId();
-            String state = instance.getState().getName();
-        
-            if (state.equals("running")) { 
-                System.out.println("running instance id = " + name);
-                instanceDimension.setValue(name);
-                GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
-                    .withStartTime(new Date(new Date().getTime() - offsetInMilliseconds))
-                    .withNamespace("AWS/EC2")
-                    .withPeriod(60)
-                    .withMetricName("CPUUtilization")
-                    .withStatistics("Average")
-                    .withDimensions(instanceDimension)
-                    .withEndTime(new Date());
-                GetMetricStatisticsResult getMetricStatisticsResult = 
-                    cloudWatch.getMetricStatistics(request);
-                List<Datapoint> datapoints = getMetricStatisticsResult.getDatapoints();
-               
-                for (Datapoint dp : datapoints) {
-                    System.out.println(" CPU utilization for instance " + name +
-                    " = " + dp.getAverage());
+            long offsetInMilliseconds = 1000 * 60 * 10;
+            Dimension instanceDimension = new Dimension();
+            instanceDimension.setName("InstanceId");
+            List<Dimension> dims = new ArrayList<Dimension>();
+            dims.add(instanceDimension);
+            
+            ArrayList<Double> averageCpuUsagePerInstance = new ArrayList<Double>();
+            for (Instance instance : instances) {
+                String name = instance.getInstanceId();
+                String state = instance.getState().getName();
+            
+                if (state.equals("running")) { 
+                    System.out.println("running instance id = " + name);
+                    instanceDimension.setValue(name);
+                    GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
+                        .withStartTime(new Date(new Date().getTime() - offsetInMilliseconds))
+                        .withNamespace("AWS/EC2")
+                        .withPeriod(60)
+                        .withMetricName("CPUUtilization")
+                        .withStatistics("Average")
+                        .withDimensions(instanceDimension)
+                        .withEndTime(new Date());
+                    GetMetricStatisticsResult getMetricStatisticsResult = 
+                        cloudWatch.getMetricStatistics(request);
+                    List<Datapoint> datapoints = getMetricStatisticsResult.getDatapoints();
+                
+                    for (Datapoint dp : datapoints) {
+                        System.out.println(" CPU utilization for instance " + name +
+                        " = " + dp.getAverage());
+                        averageCpuUsagePerInstance.add(dp.getAverage());
+                    }
+
                 }
+                else {
+                    System.out.println("instance id = " + name);
+                }
+                System.out.println("Instance State : " + state +".");
             }
-            else {
-                System.out.println("instance id = " + name);
+
+            double totalAverageCpuUsage = calculateAverage(averageCpuUsagePerInstance);
+            System.out.println("Total average CPU usage = " + totalAverageCpuUsage);
+            if (totalAverageCpuUsage > maxCpuUsage && instances.size() < maxInstances) {
+                System.out.println("CPU usage is higher than threshold of " + maxCpuUsage);
+                System.out.println("Creating new instance...");
+                createInstance();
             }
-            System.out.println("Instance State : " + state +".");
+            else if (totalAverageCpuUsage < minCpuUsage && instances.size() > minInstances) {
+                System.out.println("CPU usage is lower than threshold of " + minCpuUsage);
+                System.out.println("Terminating one of the instances...");
+                // TODO: Decide which one?
+                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+            }
         }
-        // TODO: Logic for determining if workload requires a new instance
-        // if workload > available capacity:
-        //      createInstance()
-        //      send Request (or loadbalancer does this?)
-        // else if available capacity = much larger than workload
-        //      terminateInstance()
-        // else
-        //      wait for next check (5 sec?)
+        catch (AmazonServiceException ase) {
+            System.out.println("Caught Exception: " + ase.getMessage());
+            System.out.println("Reponse Status Code: " + ase.getStatusCode());
+            System.out.println("Error Code: " + ase.getErrorCode());
+            System.out.println("Request ID: " + ase.getRequestId());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -147,14 +203,13 @@ public class AutoScaler {
      * 
      * returns: a new instance id
      */
-    private static String createInstance() {
-        String newInstanceId = "";
+    private static void createInstance() {
         try {
             RunInstancesRequest runInstancesRequest =
                 new RunInstancesRequest();
 
             /* TODO: configure to use your AMI, key and security group */
-            runInstancesRequest.withImageId("ami-0889dae1607d06a32")
+            runInstancesRequest.withImageId("ami-01d6c61c700a0bb63")
                                 .withInstanceType("t2.micro")
                                 .withMinCount(1)
                                 .withMaxCount(1)
@@ -163,9 +218,6 @@ public class AutoScaler {
             
             RunInstancesResult runInstancesResult =
                 ec2Client.runInstances(runInstancesRequest);
-            
-            newInstanceId = runInstancesResult.getReservation().getInstances()
-                        .get(0).getInstanceId();
         } catch (AmazonServiceException ase) {
             System.out.println("Caught Exception: " + ase.getMessage());
             System.out.println("Reponse Status Code: " + ase.getStatusCode());
@@ -174,8 +226,6 @@ public class AutoScaler {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return newInstanceId;
     }
 
     private static void terminateInstance(String instanceId) {
@@ -193,10 +243,15 @@ public class AutoScaler {
         }
     }
 
-    public static void main(final String[] args) throws Exception {
-        // TODO: Should use same EC2 client as load balancer I think       
-        initEc2Client();
-
-        checkInstanceCapacities();
-    }
+    // HELPER
+    private static double calculateAverage(List<Double> vals) {
+        Double sum = 0.0;
+        if(!vals.isEmpty()) {
+          for (Double val : vals) {
+              sum += val;
+          }
+          return sum.doubleValue() / vals.size();
+        }
+        return sum;
+      }
 }
