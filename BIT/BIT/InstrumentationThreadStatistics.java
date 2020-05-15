@@ -5,30 +5,6 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 import java.text.DateFormat;
 
-class StatisticsBranch { // needed here because i could not import it properly
-	String class_name_;
-	String method_name_;
-	int pc_;
-	int taken_;
-	int not_taken_;
-
-	public StatisticsBranch(String class_name, String method_name, int pc) {
-		class_name_ = class_name;
-		method_name_ = method_name;
-		pc_ = pc;
-		taken_ = 0;
-		not_taken_ = 0;
-	}
-
-	public void incrTaken() {
-		taken_++;
-	}
-
-	public void incrNotTaken() {
-		not_taken_++;
-	}
-}
-
 public class InstrumentationThreadStatistics {
 	// General
 	long start_time;
@@ -37,25 +13,14 @@ public class InstrumentationThreadStatistics {
 	Date date;
 	DateFormat dateFormat;
 
-	// ICount
-	int i_count; // Instructions
-	int b_count; // Basic Blocks
-	int m_count; // methods
-
 	// StatisticsTool
 	int dyn_method_count;
 	long dyn_bb_count;
-	long dyn_instr_count;
 
-	int newcount;
-	int newarraycount;
 	int anewarraycount;
 	int multianewarraycount;
 
-	long loadcount;
 	long storecount;
-	int fieldloadcount;
-	int fieldstorecount;
 
 	StatisticsBranch[] branch_info;
 	int branch_number;
@@ -76,23 +41,13 @@ public class InstrumentationThreadStatistics {
 		this.date = new Date();
 		this.dateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
 
-		this.i_count = 0;
-		this.b_count = 0;
-		this.m_count = 0;
-
 		this.dyn_bb_count = 0;
-		this.dyn_instr_count = 0;
 		this.dyn_method_count = 0;
 
-		this.newcount = 0;
-		this.newarraycount = 0;
 		this.anewarraycount = 0;
 		this.multianewarraycount = 0;
 
-		this.loadcount = 0;
 		this.storecount = 0;
-		this.fieldloadcount = 0;
-		this.fieldstorecount = 0;
 
 		this.s = "";
 		this.un = "";
@@ -142,30 +97,12 @@ public class InstrumentationThreadStatistics {
 	public String getI() {
 		return this.i;
 	}
-
-	public String get_i_count() {
-		return String.valueOf(this.i_count);
-	}
-	public String get_b_count() {
-		return String.valueOf(this.b_count);
-	}
-	public String get_m_count() {
-		return String.valueOf(this.m_count);
-	}
+	
 	public String get_dyn_bb_count() {
 		return String.valueOf(this.dyn_bb_count);
 	}
-	public String get_dyn_instr_count() {
-		return String.valueOf(this.dyn_instr_count);
-	}
 	public String get_dyn_method_count() {
 		return String.valueOf(this.dyn_method_count);
-	}
-	public String get_newcount() {
-		return String.valueOf(this.newcount);
-	}
-	public String get_newarraycount() {
-		return String.valueOf(this.newarraycount);
 	}
 	public String get_anewarraycount() {
 		return String.valueOf(this.anewarraycount);
@@ -173,48 +110,27 @@ public class InstrumentationThreadStatistics {
 	public String get_multianewarraycount() {
 		return String.valueOf(this.multianewarraycount);
 	}
-	public String get_loadcount() {
-		return String.valueOf(this.loadcount);
-	}
 	public String get_storecount() {
 		return String.valueOf(this.storecount);
-	}
-	public String get_fieldloadcount() {
-		return String.valueOf(this.fieldloadcount);
-	}
-	public String get_fieldstorecount() {
-		return String.valueOf(this.fieldstorecount);
 	}
 
 	public String getMetric() {
 		return String.valueOf(
-			this.i_count +
-			this.b_count +
-			this.m_count +
 			this.dyn_bb_count +
-			this.dyn_instr_count +
 			this.dyn_method_count +
-			this.newcount +
-			this.newarraycount +
 			this.anewarraycount +
 			this.multianewarraycount +
-			this.loadcount +
-			this.storecount +
-			this.fieldloadcount +
-			this.fieldstorecount
+			this.storecount 
 		);
+	}
+
+	public String getMicroSecondsUsed() {
+		return String.valueOf(((double) System.nanoTime() - this.start_time) / 1000000);
 	}
 
 
 	public String resultToLog() {
 
-//    	String branch_info_log = "";
-//    	for (int i = 0; i < branch_info.length; i++) {
-//			if (branch_info[i] != null) {
-//				//branch_info[i].print();
-//				branch_info_log += branch_info[i].class_name_ + '\t' + branch_info[i].method_name_ + '\t' + branch_info[i].pc_ + '\t' + branch_info[i].taken_ + '\t' + branch_info[i].not_taken_ + "\n";
-//			}
-//		}
 		long timeUsed = System.nanoTime() - this.start_time;
 		double timeUsedSeconds = (double) timeUsed / 1000000000;
 		return "\n==============================================" 	+	 
@@ -222,26 +138,14 @@ public class InstrumentationThreadStatistics {
 				"\nSeconds used: " + timeUsedSeconds +
 				"\nThread ID: " + this.threadId +
 				"\nRequest params: " + this.logParams() +
-				// "\nInstructions: " + this.i_count +
-				// "\nBasic blocks: " + this.b_count +
-				// "\nMethods: " + this.m_count +
 				"\nBasic Counts-------------------------------" + 
-				"\nDynamic basic blocks: " + this.dyn_bb_count
-				+ "\nDynamic instructions: " + this.dyn_instr_count + 
+				"\nDynamic basic blocks: " + this.dyn_bb_count +
 				"\nDynamic Methods: " + this.dyn_method_count + 
 				"\nAllocations--------------------------------" + 
-				"\nNew: " + this.newcount + 
-				"\nNew array: "	+ this.newarraycount + 
 				"\nA new array: " + this.anewarraycount + 
 				"\nMulti a new array: "	+ this.multianewarraycount + 
 				"\nLoad/Store---------------------------------" + 
-				"\nLoad count: " + this.loadcount + 
-				"\nStore count: " + this.storecount + 
-				"\nField load count: " + this.fieldloadcount + 
-				"\nField store count: " + this.fieldstorecount  
-//				"\nBranch summary-------------------------------"
-//            "\nCLASS NAME" + '\t' + "METHOD" + '\t' + "PC" + '\t' + "TAKEN" + '\t' + "NOT_TAKEN" +
-//            branch_info_log            // currently looks like shit but at least works
+				"\nStore count: " + this.storecount  
 		;
 	}
 
@@ -253,17 +157,7 @@ public class InstrumentationThreadStatistics {
 		return out;
 	}
 
-	void count(int incr) {
-		this.i_count += incr;
-		this.b_count++;
-	}
-
-	void mcount() {
-		this.m_count++;
-	}
-
 	void dynInstrCount(int incr) {
-		this.dyn_instr_count += incr;
 		this.dyn_bb_count++;
 	}
 
@@ -275,12 +169,6 @@ public class InstrumentationThreadStatistics {
 
 		switch (type) {
 
-		case InstructionTable.NEW:
-			this.newcount++;
-			break;
-		case InstructionTable.newarray:
-			this.newarraycount++;
-			break;
 		case InstructionTable.anewarray:
 			this.anewarraycount++;
 			break;
@@ -290,53 +178,10 @@ public class InstrumentationThreadStatistics {
 		}
 	}
 
-	void LSFieldCount(int type) {
-
-		if (type == 0)
-			this.fieldloadcount++;
-		else
-			this.fieldstorecount++;
-	}
-
 	void LSCount(int type) {
-
-		if (type == 0)
-			this.loadcount++;
-		else
-			this.storecount++;
+		this.storecount++;
 	}
 
-	void setBranchMethodName(String name) {
-		this.branch_method_name = name;
-	}
-
-	void setBranchClassName(String name) {
-		this.branch_class_name = name;
-	}
-
-	void setBranchPC(int pc) {
-		this.branch_pc = pc;
-	}
-
-	void branchInit(int n) {
-		if (this.branch_info == null) {
-			this.branch_info = new StatisticsBranch[n];
-		}
-	}
-
-	void updateBranchNumber(int n) {
-		this.branch_number = n;
-		if (this.branch_info[branch_number] == null) {
-			this.branch_info[this.branch_number] = new StatisticsBranch(this.branch_class_name, this.branch_method_name,
-					this.branch_pc);
-		}
-	}
-
-	void updateBranchOutcome(int br_outcome) {
-		if (br_outcome == 0) {
-			this.branch_info[this.branch_number].incrNotTaken();
-		} else {
-			this.branch_info[this.branch_number].incrTaken();
-		}
-	}
+	
 }
+
