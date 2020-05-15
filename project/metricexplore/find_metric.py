@@ -33,10 +33,13 @@ def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
     plt.savefig(path, format=fig_extension, dpi=resolution)
 
 FILEPATH = 'cnv_sudoku_combined.csv'
+FILEPATH_REDUCED = 'cnv_sudoku_reduced_metrics_all_strategies.csv'
 data = pd.read_csv(FILEPATH)
+data_reduced = pd.read_csv(FILEPATH_REDUCED)
 
 # Removes (S) and (N) from column names
 # as2 = 'parameters (S),anewarraycount (N),b_count (N),dyn_bb_count (N),dyn_instr_count (N),dyn_method_count (N),fieldloadcount (N),fieldstorecount (N),i (S),i_count (N),lastRequestForParams (S),loadcount (N),m_count (N),metric_value (N),multianewarraycount (N),n1 (N),n2 (N),newarraycount (N),newcount (N),s (S),storecount (N),un (N)'
+# aa = ["parameters (S)","anewarraycount (N)","dyn_bb_count (N)","dyn_method_count (N)","i (S)","lastRequestForParams (S)","metric_value (N)","micro_seconds_used (N)","multianewarraycount (N)","n1 (N)","n2 (N)","s (S)","storecount (N)","un (N)"]
 # aa = as2.split(',')
 # aa = [a[:-4] + ',' for a in aa]
 # aa = "".join(aa)
