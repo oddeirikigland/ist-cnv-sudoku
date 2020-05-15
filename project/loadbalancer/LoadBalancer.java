@@ -17,6 +17,11 @@ package loadbalancer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+
+import java.net.URL;
+import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -45,7 +50,6 @@ import com.amazonaws.services.ec2.model.UnmonitorInstancesRequest;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -102,8 +106,7 @@ public class LoadBalancer {
     static class RequestHandler implements HttpHandler {
 		@Override
 		public void handle(final HttpExchange t) throws IOException {
-
-			// Get the query.
+            // Get the query.
 			final String query = t.getRequestURI().getQuery();
 			System.out.println("> Query:\t" + query);
 
@@ -121,10 +124,11 @@ public class LoadBalancer {
 				final String[] splitParam = p.split("=");
 				newArgs.add("-" + splitParam[0]);
 				newArgs.add(splitParam[1]);
-			}
-			newArgs.add("-b");
-			newArgs.add(WebServer.parseRequestBody(t.getRequestBody()));
-
+            }
+            
+            final String body = WebServer.parseRequestBody(t.getRequestBody());
+            newArgs.add("-b");
+			newArgs.add(body);
 			newArgs.add("-d");
 
 			// Store from ArrayList into regular String[].
@@ -148,49 +152,103 @@ public class LoadBalancer {
             System.out.println("Own address:");
             System.out.println(t.getLocalAddress());
 
-            System.out.println("Public DNS:");
+            System.out.println("Public DNS and ip of instances:");
+            Instance designatedInstance = new Instance();
+            Boolean foundRunningInstance = false;
             for (Instance instance : instances) {
-                System.out.println(instance.getPublicDnsName());
-                System.out.println(instance.getPublicIpAddress());
+                // If instance is running
+                if (instance.getState().getCode() == 16) {
+                    foundRunningInstance = true;
+                    designatedInstance = instance;
+                    System.out.println(instance.getPublicDnsName());
+                    System.out.println(instance.getPublicIpAddress());
+                }
+            }          
+
+            String response = "";
+            if (foundRunningInstance) {
+                response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body);
             }
-
-            // TODO: Decide which instance is preferred
-            // TODO: Not sure on the port we decided for the solver instances, but I thought it was 80.
-            // PLACEHOLDER: .toArray()[0]
-            // InetSocketAddress designatedInstanceAddress = new InetSocketAddress(instances.toArray()[0].getPublicDnsName(), 80);
-
-			final Headers hdrs = t.getResponseHeaders();
-            
-            
+            else {
+                System.out.println("No running instance was found");
+            }
 
             // TODO: Get response from solver instance and send this response to browser
             // SEE COMMENTED CODE BELOW
 
-			// // Send response to browser.
-			// final Headers hdrs = t.getResponseHeaders();
-            // //t.sendResponseHeaders(200, responseFile.length());
+			// Send response to browser.
+			final Headers hdrs = t.getResponseHeaders();
+            //t.sendResponseHeaders(200, responseFile.length());
 
-			// ///hdrs.add("Content-Type", "image/png");
-            // hdrs.add("Content-Type", "application/json");
+			///hdrs.add("Content-Type", "image/png");
+            hdrs.add("Content-Type", "application/json");
 
-			// hdrs.add("Access-Control-Allow-Origin", "*");
+			hdrs.add("Access-Control-Allow-Origin", "*");
 
-            // hdrs.add("Access-Control-Allow-Credentials", "true");
-			// hdrs.add("Access-Control-Allow-Methods", "POST, GET, HEAD, OPTIONS");
-			// hdrs.add("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
+            hdrs.add("Access-Control-Allow-Credentials", "true");
+			hdrs.add("Access-Control-Allow-Methods", "POST, GET, HEAD, OPTIONS");
+			hdrs.add("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
 
-            // t.sendResponseHeaders(200, "OK");
+            t.sendResponseHeaders(200, response.length());
 
-            // final OutputStream os = t.getResponseBody();
-            // OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
-            // osw.write(solution.toString());
-            // osw.flush();
-            // osw.close();
+            final OutputStream os = t.getResponseBody();
+            OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
+            osw.write(response);
+            osw.flush();
+            osw.close();
 
-			// os.close();
+			os.close();
 
-			// System.out.println("> Sent response to " + t.getRemoteAddress().toString());
+			System.out.println("> Sent response to " + t.getRemoteAddress().toString());
 		}
-	}
+    }
 
+    // SOURCE: https://stackoverflow.com/a/1359700
+    private static String createAndExecuteRequest (HttpExchange he, Instance instance, String requestURI, String body) {
+        HttpURLConnection connection = null;
+
+        try {
+            //Create connection
+            // TODO: Not sure on the port we decided for the solver instances, but I thought it was 80.
+            URL url = new URL("http://" + instance.getPublicDnsName() + ":8000" + requestURI);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod(he.getRequestMethod());
+
+            final Headers requestHdrs = he.getRequestHeaders();
+            Set<Map.Entry<String,List<String>>> s = requestHdrs.entrySet();
+            for (Map.Entry<String, List<String>> e : s) {
+                for (String val : e.getValue()) {
+                    connection.setRequestProperty(e.getKey(), val);
+                }
+            }
+
+            connection.setUseCaches(false);
+            connection.setDoOutput(true);
+
+            //Send request
+            DataOutputStream wr = new DataOutputStream (
+                connection.getOutputStream());
+            wr.writeBytes(body);
+            wr.close();
+        
+            //Get Response  
+            InputStream is = connection.getInputStream();
+            BufferedReader rd = new BufferedReader(new InputStreamReader(is));
+            StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
+            String line;
+            while ((line = rd.readLine()) != null) {
+                response.append(line);
+                response.append('\r');
+            }
+            rd.close();
+            return response.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
 }

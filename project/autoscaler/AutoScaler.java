@@ -114,6 +114,7 @@ public class AutoScaler {
 
     /**
      * Check the CPU usage of running instances and create new or terminate instances accordingly.
+     * Also takes into account the min- and maximum amount of instances allowed.
      */
     public static void checkInstanceCapacities() {
         try {
@@ -214,11 +215,6 @@ public class AutoScaler {
         }
     }
 
-    /**
-     * Create a new instance.
-     * 
-     * returns: a new instance id
-     */
     private static void createInstance() {
         try {
             RunInstancesRequest runInstancesRequest =
