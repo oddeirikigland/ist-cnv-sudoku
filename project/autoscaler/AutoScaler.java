@@ -187,6 +187,30 @@ public class AutoScaler {
                 // TODO: Decide which one?
                 terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
             }
+            else if (instances.size() < minInstances) {
+                System.out.println("Amount of instances is below min of " + minInstances);
+                System.out.println("Creating new instance...");
+                createInstance();
+            }
+            else if (instances.size() > maxInstances) {
+                System.out.println("Amount of instances is above max of " + maxInstances);
+                System.out.println("Terminating one of the instances...");
+                // TODO: Decide which one?
+                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+            }
+            else {
+                if (totalAverageCpuUsage >= minCpuUsage && totalAverageCpuUsage <= maxCpuUsage) {
+                    System.out.println("CPU Usage is currently within bounds of " + minCpuUsage + " < usage < " + maxCpuUsage);
+                }
+                else if (instances.size() == maxInstances) {
+                    System.out.println("Amount of instances is currently at max of " + maxInstances);
+                }
+                else if (instances.size() == minInstances) {
+                    System.out.println("Amount of instances is currently at min of " + minInstances);
+                }
+                System.out.println("No action required");
+                System.out.println("-----------------------------------------");
+            }
         }
         catch (AmazonServiceException ase) {
             System.out.println("Caught Exception: " + ase.getMessage());
