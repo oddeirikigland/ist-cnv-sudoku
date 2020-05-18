@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.concurrent.Executors;
 
 import pt.ulisboa.tecnico.cnv.server.WebServer;
+import awsclient.AmazonDynamoDBSample;
 
 public class LoadBalancer {
     static AmazonEC2 ec2Client;
@@ -138,35 +139,16 @@ public class LoadBalancer {
 				args[i] = arg;
 				i++;
             }
+
+            // Get metric from Dynamo DB
+            Float metric = AmazonDynamoDBSample.getMetric();
+
+            Intance designatedInstance = getDesignatedInstance(metric);
             
-            DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
-            List<Reservation> reservations = describeInstancesRequest.getReservations();
-            Set<Instance> instances = new HashSet<Instance>();
-    
-            for (Reservation reservation : reservations) {
-                instances.addAll(reservation.getInstances());
-            }
-    
-            System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
-
-            System.out.println("Own address:");
-            System.out.println(t.getLocalAddress());
-
-            System.out.println("Public DNS and ip of instances:");
-            Instance designatedInstance = new Instance();
-            Boolean foundRunningInstance = false;
-            for (Instance instance : instances) {
-                // If instance is running
-                if (instance.getState().getCode() == 16) {
-                    foundRunningInstance = true;
-                    designatedInstance = instance;
-                    System.out.println(instance.getPublicDnsName());
-                    System.out.println(instance.getPublicIpAddress());
-                }
-            }          
 
             String response = "";
             if (foundRunningInstance) {
+                System.out.println("Connecting to: " + designatedInstance.getPublicIpAddress());
                 response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body);
             }
             else {
@@ -203,7 +185,12 @@ public class LoadBalancer {
 		}
     }
 
-    // SOURCE: https://stackoverflow.com/a/1359700
+    /**
+     * Use the HttpExchange object to create a new request which is then delegated to the passed instance.
+     * Returns the response of that instance.
+     * 
+     * SOURCE: https://stackoverflow.com/a/1359700
+     */
     private static String createAndExecuteRequest (HttpExchange he, Instance instance, String requestURI, String body) {
         HttpURLConnection connection = null;
 
@@ -243,6 +230,7 @@ public class LoadBalancer {
             rd.close();
             return response.toString();
         } catch (Exception e) {
+            System.out.println("Connection failed");
             e.printStackTrace();
             return null;
         } finally {
@@ -250,5 +238,43 @@ public class LoadBalancer {
                 connection.disconnect();
             }
         }
+    }
+
+    /**
+     * Find the most suitable instance, given the metric of the request.
+     * 
+     * 
+     * Request metric:
+     * above 0.05 = heavy
+     * else: not heavy
+     */
+    private static Instance getDesignatedInstance(Float metric) {
+        DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
+        List<Reservation> reservations = describeInstancesRequest.getReservations();
+        Set<Instance> instances = new HashSet<Instance>();
+
+        for (Reservation reservation : reservations) {
+            instances.addAll(reservation.getInstances());
+        }
+
+        System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
+
+        System.out.println("Own address:");
+        System.out.println(t.getLocalAddress());
+
+        System.out.println("Public DNS and ip of instances:");
+        Instance designatedInstance = new Instance();
+        Boolean foundRunningInstance = false;
+        for (Instance instance : instances) {
+            // If instance is running
+            if (instance.getState().getCode() == 16) {
+                foundRunningInstance = true;
+                designatedInstance = instance;
+                System.out.println(instance.getPublicDnsName());
+                System.out.println(instance.getPublicIpAddress());
+            }
+        }
+        
+        return designatedInstance;
     }
 }
