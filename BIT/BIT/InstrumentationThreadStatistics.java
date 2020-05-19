@@ -124,28 +124,66 @@ public class InstrumentationThreadStatistics {
 	}
 
 	public String getS() {
-		System.out.println(this.s);
 		return this.s;
 	}
 
 	public String getUn() {
-		System.out.println(this.un);
 		return this.un;
 	}
 
 	public String getN1() {
-		System.out.println(this.n1);
 		return this.n1;
 	}
 
 	public String getN2() {
-		System.out.println(this.n2);
 		return this.n2;
 	}
 
 	public String getI() {
-		System.out.println(this.i);
 		return this.i;
+	}
+
+	public String get_i_count() {
+		return String.valueOf(this.i_count);
+	}
+	public String get_b_count() {
+		return String.valueOf(this.b_count);
+	}
+	public String get_m_count() {
+		return String.valueOf(this.m_count);
+	}
+	public String get_dyn_bb_count() {
+		return String.valueOf(this.dyn_bb_count);
+	}
+	public String get_dyn_instr_count() {
+		return String.valueOf(this.dyn_instr_count);
+	}
+	public String get_dyn_method_count() {
+		return String.valueOf(this.dyn_method_count);
+	}
+	public String get_newcount() {
+		return String.valueOf(this.newcount);
+	}
+	public String get_newarraycount() {
+		return String.valueOf(this.newarraycount);
+	}
+	public String get_anewarraycount() {
+		return String.valueOf(this.anewarraycount);
+	}
+	public String get_multianewarraycount() {
+		return String.valueOf(this.multianewarraycount);
+	}
+	public String get_loadcount() {
+		return String.valueOf(this.loadcount);
+	}
+	public String get_storecount() {
+		return String.valueOf(this.storecount);
+	}
+	public String get_fieldloadcount() {
+		return String.valueOf(this.fieldloadcount);
+	}
+	public String get_fieldstorecount() {
+		return String.valueOf(this.fieldstorecount);
 	}
 
 	public String getMetric() {
