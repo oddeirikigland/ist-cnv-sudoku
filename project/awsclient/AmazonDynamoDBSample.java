@@ -155,15 +155,74 @@ public class AmazonDynamoDBSample {
         }
     }
 
-    public static int getMetric() {
-        return 1;
+    public static float getMetric(String tableName, String s, String un, String n1, String n2, String i) {
+        try {
+            init();
+
+            createTableIfMissing(dynamoDB, tableName);
+
+            // Scan items for given request parameters
+            HashMap<String, Condition> scanFilter = new HashMap<String, Condition>();
+
+            Condition conditionS = new Condition()
+                .withComparisonOperator(ComparisonOperator.EQ.toString())
+                .withAttributeValueList(new AttributeValue(s));
+            scanFilter.put("s", conditionS);
+
+            Condition conditionUn = new Condition()
+                .withComparisonOperator(ComparisonOperator.EQ.toString())
+                .withAttributeValueList(new AttributeValue().withN(un));
+            scanFilter.put("un", conditionUn);
+
+            Condition conditionN1 = new Condition()
+                .withComparisonOperator(ComparisonOperator.EQ.toString())
+                .withAttributeValueList(new AttributeValue().withN(n1));
+            scanFilter.put("n1", conditionN1);
+
+            Condition conditionN2 = new Condition()
+                .withComparisonOperator(ComparisonOperator.EQ.toString())
+                .withAttributeValueList(new AttributeValue().withN(n2));
+            scanFilter.put("n2", conditionN2);
+
+            Condition conditionI = new Condition()
+                .withComparisonOperator(ComparisonOperator.EQ.toString())
+                .withAttributeValueList(new AttributeValue(i));
+            scanFilter.put("i", conditionI);
+
+            ScanRequest scanRequest = new ScanRequest(tableName).withScanFilter(scanFilter);
+            ScanResult scanResult = dynamoDB.scan(scanRequest);
+            System.out.println("Result: " + scanResult);
+
+            if (scanResult.getCount() > 0) {
+                float metric_value = Float.valueOf(scanResult.getItems().get(0).get("metric_value").getN());
+                return metric_value;
+            }
+        } catch (AmazonServiceException ase) {
+            System.out.println("Caught an AmazonServiceException, which means your request made it "
+                    + "to AWS, but was rejected with an error response for some reason.");
+            System.out.println("Error Message:    " + ase.getMessage());
+            System.out.println("HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("Error Type:       " + ase.getErrorType());
+            System.out.println("Request ID:       " + ase.getRequestId());
+        } catch (AmazonClientException ace) {
+            System.out.println("Caught an AmazonClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with AWS, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message: " + ace.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0; // If no data found for request params
     }
 
     public static void main(String[] args) throws Exception {
         String tableName = "test_table";
-        String[] parameters = {"s=1", "un=1", "n1=1", "n2=1", "i=1"};
+        String[] parameters = {"s=BFS", "un=81", "n1=9", "n2=9", "i=SUDOKU_PUZZLE_9x9_101"};
         InstrumentationThreadStatistics stats = new InstrumentationThreadStatistics(123, parameters);
         updateSudokuDynamoDB(tableName, stats);
+
+        System.out.println(getMetric(tableName, "BFS", "81", "9", "9", "SUDOKU_PUZZLE_9x9_101"));
     }
 
     private static synchronized Map<String, AttributeValue> newItem(InstrumentationThreadStatistics stats) {
@@ -176,20 +235,9 @@ public class AmazonDynamoDBSample {
         item.put("i", new AttributeValue(stats.getI()));
         item.put("lastRequestForParams", new AttributeValue(stats.getRequestDate()));
         item.put("metric_value", new AttributeValue().withN((stats.getMetric())));
-        item.put("i_count", new AttributeValue().withN((stats.get_i_count())));
-        item.put("b_count", new AttributeValue().withN((stats.get_b_count())));
-        item.put("m_count", new AttributeValue().withN((stats.get_m_count())));
         item.put("dyn_bb_count", new AttributeValue().withN((stats.get_dyn_bb_count())));
-        item.put("dyn_instr_count", new AttributeValue().withN(stats.get_dyn_instr_count()));
         item.put("dyn_method_count", new AttributeValue().withN((stats.get_dyn_method_count())));
-        item.put("newcount", new AttributeValue().withN((stats.get_newcount())));
-        item.put("newarraycount", new AttributeValue().withN((stats.get_newarraycount())));
-        item.put("anewarraycount", new AttributeValue().withN((stats.get_anewarraycount())));
-        item.put("multianewarraycount", new AttributeValue().withN((stats.get_multianewarraycount())));
-        item.put("loadcount", new AttributeValue().withN((stats.get_loadcount())));
-        item.put("storecount", new AttributeValue().withN((stats.get_storecount())));
-        item.put("fieldloadcount", new AttributeValue().withN((stats.get_fieldloadcount())));
-        item.put("fieldstorecount", new AttributeValue().withN((stats.get_fieldstorecount())));
+        item.put("micro_seconds_used", new AttributeValue().withN((stats.getMicroSecondsUsed())));
 
         return item;
     }
