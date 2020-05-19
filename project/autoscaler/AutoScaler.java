@@ -157,7 +157,6 @@ public class AutoScaler {
                 }
                 System.out.println("No action required");
             }
-            System.out.println("-----------------------------------------");
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
@@ -174,6 +173,7 @@ public class AutoScaler {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        System.out.println("-----------------------------------------");
     }
 
     private static void createInstance() {

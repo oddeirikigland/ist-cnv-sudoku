@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.Iterator;
 
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.model.Instance;
@@ -26,7 +27,7 @@ import com.amazonaws.AmazonServiceException;
  */
 public class ServerHelper {
     /**
-     * Get instances from Amazon EC2 client
+     * Get running instances from Amazon EC2 client
      */
     public static Set<Instance> getInstances(AmazonEC2 ec2Client) {
         Set<Instance> instances = new HashSet<Instance>();
@@ -35,6 +36,15 @@ public class ServerHelper {
             List<Reservation> reservations = describeInstancesResult.getReservations();
             for (Reservation reservation : reservations) {
                 instances.addAll(reservation.getInstances());
+            }
+
+            // Remove instances that aren't runnning from conideration
+            Iterator<Instance> iterator = instances.iterator();
+            while(iterator.hasNext()) {
+                Instance instance = iterator.next();
+                if(instance.getState().getCode() != 16) {
+                    iterator.remove();
+                }
             }
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "
@@ -57,10 +67,8 @@ public class ServerHelper {
 
     public static HashMap<String, Double> getAverageCpuUsagePerInstance (AmazonCloudWatch cloudWatch, Set<Instance> instances) {
         HashMap<String, Double> averageCpuUsagePerInstance = new HashMap<String, Double>();
-        
-        try {
-            long offsetInMilliseconds = 1000 * 60 * 10;
 
+        try {
             Dimension instanceDimension = new Dimension();
             instanceDimension.setName("InstanceId");
             List<Dimension> dims = new ArrayList<Dimension>();
@@ -74,7 +82,7 @@ public class ServerHelper {
                     System.out.println("running instance id = " + name);
                     instanceDimension.setValue(name);
                     GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
-                        .withStartTime(new Date(new Date().getTime() - offsetInMilliseconds))
+                        .withStartTime(new Date(new Date().getTime() - new Long(60000)))
                         .withNamespace("AWS/EC2")
                         .withPeriod(60)
                         .withMetricName("CPUUtilization")
@@ -85,11 +93,16 @@ public class ServerHelper {
                         cloudWatch.getMetricStatistics(request);
                     List<Datapoint> datapoints = getMetricStatisticsResult.getDatapoints();
                 
+                    System.out.println(datapoints.size());
+
+                    Double summedAvgDatapoints = 0.0;
                     for (Datapoint dp : datapoints) {
-                        System.out.println("CPU utilization for instance " + name +
-                        " = " + dp.getAverage());
-                        averageCpuUsagePerInstance.put(name, dp.getAverage());
+                        summedAvgDatapoints += dp.getAverage();
                     }
+                    Double avg = summedAvgDatapoints / datapoints.size();
+
+                    System.out.println("CPU utilization for instance " + name +" = " + avg);
+                    averageCpuUsagePerInstance.put(name, avg);
                 }
                 else {
                     System.out.println("instance: " + name + " is not running");

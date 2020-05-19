@@ -114,35 +114,27 @@ public class LoadBalancer {
 		public void handle(final HttpExchange t) throws IOException {
             // Get the query.
 			final String query = t.getRequestURI().getQuery();
-			System.out.println("> Query:\t" + query);
+			System.out.println("Incoming query:\t" + query);
 
 			// Break it down into String[].
 			final String[] params = query.split("&");
 
-			// Store as if it was a direct call to SolverMain.
-			final ArrayList<String> newArgs = new ArrayList<>();
+			// Store args by name
+			final HashMap<String, String> newArgs = new HashMap<String, String>();
 			for (final String p : params) {
 				final String[] splitParam = p.split("=");
-				newArgs.add("-" + splitParam[0]);
-				newArgs.add(splitParam[1]);
-            }
-            
-            final String body = WebServer.parseRequestBody(t.getRequestBody());
-            newArgs.add("-b");
-			newArgs.add(body);
-			newArgs.add("-d");
-
-			// Store from ArrayList into regular String[].
-			final String[] args = new String[newArgs.size()];
-			int i = 0;
-			for(String arg: newArgs) {
-				args[i] = arg;
-				i++;
+				newArgs.put(splitParam[0], splitParam[1]);
             }
 
-			// Calling instrumentation tool to check the params
-            // Get metric from Dynamo DB
-            int metric = AmazonDynamoDBSample.getMetric();
+            // Get metric from Dynamo DB using args
+            float metric = AmazonDynamoDBSample.getMetric(
+                "cnv_sudoku",
+                newArgs.get("s"),
+                newArgs.get("un"),
+                newArgs.get("n1"),
+                newArgs.get("n2"),
+                newArgs.get("i")
+            );
             System.out.println("Metric value of this request is: " + metric);
 
             // Get designated instance based on the metric
@@ -153,6 +145,7 @@ public class LoadBalancer {
             String response = "";
             if (designatedInstance != null) {
                 System.out.println("Redirecting request to: " + designatedInstance.getPublicIpAddress());
+                final String body = WebServer.parseRequestBody(t.getRequestBody());
                 response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body);
                 System.out.println(designatedInstance.getPublicIpAddress() + " response: " +  response);
             } else {
@@ -188,7 +181,7 @@ public class LoadBalancer {
      * above 0.05 = heavy
      * else: not heavy
      */
-    private static Instance getDesignatedInstance(int metric, String dedicatedInstanceId) {
+    private static Instance getDesignatedInstance(float metric, String dedicatedInstanceId) {
         Instance designatedInstance = null;
         try {
             Set<Instance> instances = ServerHelper.getInstances(ec2Client);
