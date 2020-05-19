@@ -13,11 +13,17 @@ package loadbalancer;
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
+import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
+import java.util.concurrent.Executors;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.Map;
+import java.util.ArrayList;
 
 import java.net.URL;
 import java.net.HttpURLConnection;
@@ -30,36 +36,30 @@ import com.sun.net.httpserver.HttpServer;
 
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.InstanceType;
 import com.amazonaws.services.ec2.model.RunInstancesRequest;
 import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
-import com.amazonaws.services.ec2.model.Tag;
-import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
-import com.amazonaws.services.ec2.model.DescribeInstancesResult;
-import com.amazonaws.services.ec2.model.Instance;
-import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.MonitorInstancesRequest;
 import com.amazonaws.services.ec2.model.UnmonitorInstancesRequest;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.concurrent.Executors;
+
 
 import pt.ulisboa.tecnico.cnv.server.WebServer;
 import awsclient.AmazonDynamoDBSample;
+import util.ServerHelper;
 
 public class LoadBalancer {
     static AmazonEC2 ec2Client;
+    static AmazonCloudWatch cloudWatch;
 
     public static void initEc2Client() throws Exception {
         ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
@@ -73,6 +73,11 @@ public class LoadBalancer {
                     e);
         }
         ec2Client = AmazonEC2ClientBuilder.standard()
+            .withCredentials(credentialsProvider)
+            .withRegion("us-east-1")
+            .build();
+
+        cloudWatch = AmazonCloudWatchClientBuilder.standard()
             .withCredentials(credentialsProvider)
             .withRegion("us-east-1")
             .build();
@@ -114,11 +119,6 @@ public class LoadBalancer {
 			// Break it down into String[].
 			final String[] params = query.split("&");
 
-			// Calling instrumentation tool to check the params
-			// TODO: use result from checkparams (aka: metrics) to decide where to run the sudoku solver
-			Integer metricNumber = 1;//InstrumentationTool.checkParams(params);
-			System.out.println("Metric value of this request is: " + metricNumber);
-
 			// Store as if it was a direct call to SolverMain.
 			final ArrayList<String> newArgs = new ArrayList<>();
 			for (final String p : params) {
@@ -140,33 +140,29 @@ public class LoadBalancer {
 				i++;
             }
 
+			// Calling instrumentation tool to check the params
             // Get metric from Dynamo DB
-            Float metric = AmazonDynamoDBSample.getMetric();
+            int metric = AmazonDynamoDBSample.getMetric();
+            System.out.println("Metric value of this request is: " + metric);
 
-            Intance designatedInstance = getDesignatedInstance(metric);
-            
+            // Get designated instance based on the metric
+            Instance designatedInstance = getDesignatedInstance(metric, t.getLocalAddress().toString());
 
+            // If a running instance was found, send request to instance
+            // and await the response.
             String response = "";
-            if (foundRunningInstance) {
-                System.out.println("Connecting to: " + designatedInstance.getPublicIpAddress());
+            if (designatedInstance != null) {
+                System.out.println("Redirecting request to: " + designatedInstance.getPublicIpAddress());
                 response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body);
-            }
-            else {
+                System.out.println(designatedInstance.getPublicIpAddress() + " response: " +  response);
+            } else {
                 System.out.println("No running instance was found");
             }
 
-            // TODO: Get response from solver instance and send this response to browser
-            // SEE COMMENTED CODE BELOW
-
 			// Send response to browser.
 			final Headers hdrs = t.getResponseHeaders();
-            //t.sendResponseHeaders(200, responseFile.length());
-
-			///hdrs.add("Content-Type", "image/png");
             hdrs.add("Content-Type", "application/json");
-
 			hdrs.add("Access-Control-Allow-Origin", "*");
-
             hdrs.add("Access-Control-Allow-Credentials", "true");
 			hdrs.add("Access-Control-Allow-Methods", "POST, GET, HEAD, OPTIONS");
 			hdrs.add("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
@@ -178,11 +174,60 @@ public class LoadBalancer {
             osw.write(response);
             osw.flush();
             osw.close();
-
 			os.close();
 
-			System.out.println("> Sent response to " + t.getRemoteAddress().toString());
+			System.out.println("Sent response to " + t.getRemoteAddress().toString());
 		}
+    }
+
+    /**
+     * Find the most suitable instance, given the metric of the request.
+     * Exclude the instance with LoadBalancer and AutoScaler running from consideration.
+     * 
+     * Request metric:
+     * above 0.05 = heavy
+     * else: not heavy
+     */
+    private static Instance getDesignatedInstance(int metric, String dedicatedInstanceId) {
+        Instance designatedInstance = null;
+        try {
+            Set<Instance> instances = ServerHelper.getInstances(ec2Client);
+            HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
+
+            System.out.println(averageCpuUsagePerInstance.toString());
+
+            Double highestUsage = 100.0;
+            for (Instance instance : instances) {
+                String curInstanceId = instance.getInstanceId();
+                // Code 16 = instance is running
+                if (instance.getState().getCode() == 16) {
+                    System.out.println(curInstanceId);
+
+                    System.out.println("Instance usage: " + averageCpuUsagePerInstance.get(curInstanceId));
+                    if (averageCpuUsagePerInstance.get(curInstanceId) < highestUsage) {
+                        designatedInstance = instance;
+                    }
+                }
+            }
+
+            System.out.println("Designated instance: " + designatedInstance.getPublicIpAddress().toString());
+        } catch (AmazonServiceException ase) {
+            System.out.println("Caught an AmazonServiceException, which means your request made it "
+                    + "to AWS, but was rejected with an error response for some reason.");
+            System.out.println("Error Message:    " + ase.getMessage());
+            System.out.println("HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("Error Type:       " + ase.getErrorType());
+            System.out.println("Request ID:       " + ase.getRequestId());
+        } catch (AmazonClientException ace) {
+            System.out.println("Caught an AmazonClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with AWS, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message: " + ace.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } 
+        return designatedInstance;
     }
 
     /**
@@ -238,43 +283,5 @@ public class LoadBalancer {
                 connection.disconnect();
             }
         }
-    }
-
-    /**
-     * Find the most suitable instance, given the metric of the request.
-     * 
-     * 
-     * Request metric:
-     * above 0.05 = heavy
-     * else: not heavy
-     */
-    private static Instance getDesignatedInstance(Float metric) {
-        DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
-        List<Reservation> reservations = describeInstancesRequest.getReservations();
-        Set<Instance> instances = new HashSet<Instance>();
-
-        for (Reservation reservation : reservations) {
-            instances.addAll(reservation.getInstances());
-        }
-
-        System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
-
-        System.out.println("Own address:");
-        System.out.println(t.getLocalAddress());
-
-        System.out.println("Public DNS and ip of instances:");
-        Instance designatedInstance = new Instance();
-        Boolean foundRunningInstance = false;
-        for (Instance instance : instances) {
-            // If instance is running
-            if (instance.getState().getCode() == 16) {
-                foundRunningInstance = true;
-                designatedInstance = instance;
-                System.out.println(instance.getPublicDnsName());
-                System.out.println(instance.getPublicIpAddress());
-            }
-        }
-        
-        return designatedInstance;
     }
 }

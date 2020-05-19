@@ -14,6 +14,7 @@ package autoscaler;
  * permissions and limitations under the License.
  */
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
@@ -50,12 +51,8 @@ import com.amazonaws.services.ec2.model.UnmonitorInstancesRequest;
 
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchClientBuilder;
-import com.amazonaws.services.cloudwatch.model.Dimension;
-import com.amazonaws.services.cloudwatch.model.Datapoint;
-import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsRequest;
-import com.amazonaws.services.cloudwatch.model.GetMetricStatisticsResult;
 
-import pt.ulisboa.tecnico.cnv.server.WebServer;
+import util.ServerHelper;
 
 public class AutoScaler {
     static AmazonEC2 ec2Client;
@@ -118,57 +115,14 @@ public class AutoScaler {
      */
     public static void checkInstanceCapacities() {
         try {
-            DescribeInstancesResult describeInstancesRequest = ec2Client.describeInstances();
-            List<Reservation> reservations = describeInstancesRequest.getReservations();
-            Set<Instance> instances = new HashSet<Instance>();
-
-            for (Reservation reservation : reservations) {
-                instances.addAll(reservation.getInstances());
-            }
+            Set<Instance> instances = ServerHelper.getInstances(ec2Client);
 
             System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
-
-            long offsetInMilliseconds = 1000 * 60 * 10;
-            Dimension instanceDimension = new Dimension();
-            instanceDimension.setName("InstanceId");
-            List<Dimension> dims = new ArrayList<Dimension>();
-            dims.add(instanceDimension);
             
-            ArrayList<Double> averageCpuUsagePerInstance = new ArrayList<Double>();
-            for (Instance instance : instances) {
-                String name = instance.getInstanceId();
-                String state = instance.getState().getName();
-            
-                if (state.equals("running")) { 
-                    System.out.println("running instance id = " + name);
-                    instanceDimension.setValue(name);
-                    GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
-                        .withStartTime(new Date(new Date().getTime() - offsetInMilliseconds))
-                        .withNamespace("AWS/EC2")
-                        .withPeriod(60)
-                        .withMetricName("CPUUtilization")
-                        .withStatistics("Average")
-                        .withDimensions(instanceDimension)
-                        .withEndTime(new Date());
-                    GetMetricStatisticsResult getMetricStatisticsResult = 
-                        cloudWatch.getMetricStatistics(request);
-                    List<Datapoint> datapoints = getMetricStatisticsResult.getDatapoints();
-                
-                    for (Datapoint dp : datapoints) {
-                        System.out.println(" CPU utilization for instance " + name +
-                        " = " + dp.getAverage());
-                        averageCpuUsagePerInstance.add(dp.getAverage());
-                    }
-
-                }
-                else {
-                    System.out.println("instance id = " + name);
-                }
-                System.out.println("Instance State : " + state +".");
-            }
-
+            HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
             double totalAverageCpuUsage = calculateAverage(averageCpuUsagePerInstance);
             System.out.println("Total average CPU usage = " + totalAverageCpuUsage);
+            
             if (totalAverageCpuUsage > maxCpuUsage && instances.size() < maxInstances) {
                 System.out.println("CPU usage is higher than threshold of " + maxCpuUsage);
                 System.out.println("Creating new instance...");
@@ -202,14 +156,21 @@ public class AutoScaler {
                     System.out.println("Amount of instances is currently at min of " + minInstances);
                 }
                 System.out.println("No action required");
-                System.out.println("-----------------------------------------");
             }
-        }
-        catch (AmazonServiceException ase) {
-            System.out.println("Caught Exception: " + ase.getMessage());
-            System.out.println("Reponse Status Code: " + ase.getStatusCode());
-            System.out.println("Error Code: " + ase.getErrorCode());
-            System.out.println("Request ID: " + ase.getRequestId());
+            System.out.println("-----------------------------------------");
+        } catch (AmazonServiceException ase) {
+            System.out.println("Caught an AmazonServiceException, which means your request made it "
+                    + "to AWS, but was rejected with an error response for some reason.");
+            System.out.println("Error Message:    " + ase.getMessage());
+            System.out.println("HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("Error Type:       " + ase.getErrorType());
+            System.out.println("Request ID:       " + ase.getRequestId());
+        } catch (AmazonClientException ace) {
+            System.out.println("Caught an AmazonClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with AWS, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message: " + ace.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -230,11 +191,24 @@ public class AutoScaler {
             
             RunInstancesResult runInstancesResult =
                 ec2Client.runInstances(runInstancesRequest);
+
+            String newInstanceId = runInstancesResult.getReservation().getInstances()
+                .get(0).getInstanceId();
+
+            System.out.println("New instance with id: " + newInstanceId + " was created");
         } catch (AmazonServiceException ase) {
-            System.out.println("Caught Exception: " + ase.getMessage());
-            System.out.println("Reponse Status Code: " + ase.getStatusCode());
-            System.out.println("Error Code: " + ase.getErrorCode());
-            System.out.println("Request ID: " + ase.getRequestId());
+            System.out.println("Caught an AmazonServiceException, which means your request made it "
+                    + "to AWS, but was rejected with an error response for some reason.");
+            System.out.println("Error Message:    " + ase.getMessage());
+            System.out.println("HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("Error Type:       " + ase.getErrorType());
+            System.out.println("Request ID:       " + ase.getRequestId());
+        } catch (AmazonClientException ace) {
+            System.out.println("Caught an AmazonClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with AWS, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message: " + ace.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -245,25 +219,34 @@ public class AutoScaler {
             TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
             termInstanceReq.withInstanceIds(instanceId);
             ec2Client.terminateInstances(termInstanceReq);
-        }catch (AmazonServiceException ase) {
-            System.out.println("Caught Exception: " + ase.getMessage());
-            System.out.println("Reponse Status Code: " + ase.getStatusCode());
-            System.out.println("Error Code: " + ase.getErrorCode());
-            System.out.println("Request ID: " + ase.getRequestId());
+            System.out.println("Instance with id: " + instanceId + " was removed");
+        } catch (AmazonServiceException ase) {
+            System.out.println("Caught an AmazonServiceException, which means your request made it "
+                    + "to AWS, but was rejected with an error response for some reason.");
+            System.out.println("Error Message:    " + ase.getMessage());
+            System.out.println("HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("Error Type:       " + ase.getErrorType());
+            System.out.println("Request ID:       " + ase.getRequestId());
+        } catch (AmazonClientException ace) {
+            System.out.println("Caught an AmazonClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with AWS, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message: " + ace.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     // HELPER
-    private static double calculateAverage(List<Double> vals) {
+    private static double calculateAverage(HashMap<String, Double> vals) {
         Double sum = 0.0;
-        if(!vals.isEmpty()) {
-          for (Double val : vals) {
-              sum += val;
-          }
-          return sum.doubleValue() / vals.size();
+        if(vals.size() > 0) {
+            for (Double val : vals.values()) {
+                sum += val;
+            }
+            return sum.doubleValue() / vals.size();
         }
         return sum;
-      }
+    }
 }
