@@ -61,3 +61,8 @@ if test "$1" = "AutoScaler" ;
 then 
     java autoscaler.AutoScaler $2
 fi
+
+if test "$1" = "KillThreads" ;
+then 
+    pkill java
+fi
