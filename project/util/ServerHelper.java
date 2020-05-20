@@ -30,7 +30,8 @@ import com.amazonaws.AmazonServiceException;
  */
 public class ServerHelper {
     /**
-     * Get running instances from Amazon EC2 client
+     * Get running instances from Amazon EC2 client.
+     * Excludes the instance that is passed by ownInstanceIp.
      */
     public static Set<Instance> getInstances(AmazonEC2 ec2Client, String ownInstanceIp) {
         Set<Instance> instances = new HashSet<Instance>();
