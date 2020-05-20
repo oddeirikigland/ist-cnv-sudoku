@@ -245,7 +245,6 @@ public class LoadBalancer {
 
         try {
             //Create connection
-            // TODO: Not sure on the port we decided for the solver instances, but I thought it was 80.
             URL url = new URL("http://" + instance.getPublicDnsName() + ":8000" + requestURI);
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod(he.getRequestMethod());

@@ -68,6 +68,8 @@ public class AutoScaler {
     public static void main(final String[] args) throws Exception {
         if (args.length > 0) {
             ownInstanceIp = args[0];
+            
+            System.out.println("Own instance ip = " + ownInstanceIp);
 
             // TODO: Parametrize
             // max CPU, min CPU, min Instances, max Instances
@@ -256,9 +258,7 @@ public class AutoScaler {
     // HELPER
     private static double calculateAverage(HashMap<String, Double> vals) {
         Double sum = 0.0;
-        System.out.println("vals.size() " + vals.size());
         if(vals.size() > 0) {
-            System.out.println("vals.values() " + vals.values().toString());
             for (Double val : vals.values()) {
                 sum += val;
             }
