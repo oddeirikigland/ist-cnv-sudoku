@@ -85,7 +85,6 @@ public class ServerHelper {
                 String state = instance.getState().getName();
             
                 if (state.equals("running")) { 
-                    System.out.println("running instance id = " + name);
                     instanceDimension.setValue(name);
                     GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
                         .withStartTime(new Date(new Date().getTime() - offsetInMilliseconds))
@@ -99,18 +98,16 @@ public class ServerHelper {
                         cloudWatch.getMetricStatistics(request);
                     List<Datapoint> datapoints = getMetricStatisticsResult.getDatapoints();
                 
-                    System.out.println(datapoints.size());
-
                     Double avg = 0.0;
                     for (Datapoint dp : datapoints) {
+                        System.out.println(dp.getAverage());
                         avg = dp.getAverage();
                     }
-
-                    System.out.println("CPU utilization for instance " + name +" = " + avg);
 
                     averageCpuUsagePerInstance.put(name, avg);
                 }
                 else {
+                    // Should never enter this, since instances are filtered of non-running instances
                     System.out.println("instance: " + name + " is not running");
                 }
             }
