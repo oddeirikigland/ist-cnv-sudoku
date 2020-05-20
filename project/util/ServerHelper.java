@@ -8,6 +8,9 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import java.io.*;
+
+
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
@@ -29,7 +32,7 @@ public class ServerHelper {
     /**
      * Get running instances from Amazon EC2 client
      */
-    public static Set<Instance> getInstances(AmazonEC2 ec2Client) {
+    public static Set<Instance> getInstances(AmazonEC2 ec2Client, String ownInstanceIp) {
         Set<Instance> instances = new HashSet<Instance>();
         try {
             DescribeInstancesResult describeInstancesResult = ec2Client.describeInstances();
@@ -38,11 +41,13 @@ public class ServerHelper {
                 instances.addAll(reservation.getInstances());
             }
 
-            // Remove instances that aren't runnning from conideration
+            // Remove instance that process is running on and
+            // instances that aren't runnning from consideration
             Iterator<Instance> iterator = instances.iterator();
             while(iterator.hasNext()) {
                 Instance instance = iterator.next();
-                if(instance.getState().getCode() != 16) {
+                if(instance.getState().getCode() != 16 ||
+                   instance.getPublicIpAddress() == ownInstanceIp) {
                     iterator.remove();
                 }
             }
@@ -69,6 +74,7 @@ public class ServerHelper {
         HashMap<String, Double> averageCpuUsagePerInstance = new HashMap<String, Double>();
 
         try {
+            long offsetInMilliseconds = 1000 * 60 * 10;
             Dimension instanceDimension = new Dimension();
             instanceDimension.setName("InstanceId");
             List<Dimension> dims = new ArrayList<Dimension>();
@@ -82,9 +88,9 @@ public class ServerHelper {
                     System.out.println("running instance id = " + name);
                     instanceDimension.setValue(name);
                     GetMetricStatisticsRequest request = new GetMetricStatisticsRequest()
-                        .withStartTime(new Date(new Date().getTime() - new Long(60000)))
+                        .withStartTime(new Date(new Date().getTime() - offsetInMilliseconds))
                         .withNamespace("AWS/EC2")
-                        .withPeriod(60)
+                        .withPeriod(60) // 60 30 10 5 1
                         .withMetricName("CPUUtilization")
                         .withStatistics("Average")
                         .withDimensions(instanceDimension)
@@ -95,13 +101,13 @@ public class ServerHelper {
                 
                     System.out.println(datapoints.size());
 
-                    Double summedAvgDatapoints = 0.0;
+                    Double avg = 0.0;
                     for (Datapoint dp : datapoints) {
-                        summedAvgDatapoints += dp.getAverage();
+                        avg = dp.getAverage();
                     }
-                    Double avg = summedAvgDatapoints / datapoints.size();
 
                     System.out.println("CPU utilization for instance " + name +" = " + avg);
+
                     averageCpuUsagePerInstance.put(name, avg);
                 }
                 else {
@@ -127,4 +133,22 @@ public class ServerHelper {
 
         return averageCpuUsagePerInstance;
     }
+
+    public static String parseRequestBody(InputStream is) throws IOException {
+        InputStreamReader isr =  new InputStreamReader(is,"utf-8");
+        BufferedReader br = new BufferedReader(isr);
+
+        // From now on, the right way of moving from bytes to utf-8 characters:
+        int b;
+        StringBuilder buf = new StringBuilder(512);
+        while ((b = br.read()) != -1) {
+            buf.append((char) b);
+
+        }
+
+        br.close();
+        isr.close();
+
+        return buf.toString();
+	}
 }

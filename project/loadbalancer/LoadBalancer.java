@@ -60,6 +60,20 @@ import util.ServerHelper;
 public class LoadBalancer {
     static AmazonEC2 ec2Client;
     static AmazonCloudWatch cloudWatch;
+    static String ownInstanceIp;
+
+	public static void main(final String[] args) throws Exception {
+        if (args.length > 0) {
+            ownInstanceIp = args[0];
+
+            System.out.println("Own instance ip = " + ownInstanceIp);
+
+            initEc2Client();    
+            deployLoadBalancer();
+        } else {
+            System.out.println("AutoScaler requires the public ip4 of the instance on which it is running as argument");
+        }
+    }
 
     public static void initEc2Client() throws Exception {
         ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
@@ -96,11 +110,6 @@ public class LoadBalancer {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-	public static void main(final String[] args) throws Exception {
-        initEc2Client();    
-        deployLoadBalancer();
     }
 
     /*
@@ -145,7 +154,7 @@ public class LoadBalancer {
             String response = "";
             if (designatedInstance != null) {
                 System.out.println("Redirecting request to: " + designatedInstance.getPublicIpAddress());
-                final String body = WebServer.parseRequestBody(t.getRequestBody());
+                final String body = ServerHelper.parseRequestBody(t.getRequestBody());
                 response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body);
                 System.out.println(designatedInstance.getPublicIpAddress() + " response: " +  response);
             } else {
@@ -184,7 +193,7 @@ public class LoadBalancer {
     private static Instance getDesignatedInstance(float metric, String dedicatedInstanceId) {
         Instance designatedInstance = null;
         try {
-            Set<Instance> instances = ServerHelper.getInstances(ec2Client);
+            Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
             HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
 
             System.out.println(averageCpuUsagePerInstance.toString());
@@ -196,6 +205,8 @@ public class LoadBalancer {
                 if (instance.getState().getCode() == 16) {
                     System.out.println(curInstanceId);
 
+                    // TODO: METRIC LOGIC
+                    
                     System.out.println("Instance usage: " + averageCpuUsagePerInstance.get(curInstanceId));
                     if (averageCpuUsagePerInstance.get(curInstanceId) < highestUsage) {
                         designatedInstance = instance;

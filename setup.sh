@@ -54,10 +54,10 @@ fi
 
 if test "$1" = "LoadBalancer" ;
 then
-    java loadbalancer.LoadBalancer
+    java loadbalancer.LoadBalancer $2
 fi
 
 if test "$1" = "AutoScaler" ;
 then 
-    java autoscaler.AutoScaler
+    java autoscaler.AutoScaler $2
 fi

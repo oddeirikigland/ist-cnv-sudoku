@@ -57,24 +57,36 @@ import util.ServerHelper;
 public class AutoScaler {
     static AmazonEC2 ec2Client;
     static AmazonCloudWatch cloudWatch;
+
+    static String ownInstanceIp;
+
     static Double minCpuUsage;
     static Double maxCpuUsage;
     static Integer minInstances;
     static Integer maxInstances;
 
     public static void main(final String[] args) throws Exception {
-        // TODO: Parametrize
-        // max CPU, min CPU, min Instances, max Instances
-        init(40.0, 60.0, 1, 3);
+        if (args.length > 0) {
+            ownInstanceIp = args[0];
 
-        ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
+            // TODO: Parametrize
+            // max CPU, min CPU, min Instances, max Instances
+            init(40.0, 60.0, 1, 3);
 
-        // Delay of a minute
-        autoScalerService.scheduleWithFixedDelay(new InstanceChecker(), 0, 60, SECONDS);
+            ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
+
+            // Delay of a minute
+            autoScalerService.scheduleWithFixedDelay(new InstanceChecker(), 0, 60, SECONDS);
+        } else {
+            System.out.println("AutoScaler requires the public ip4 of the instance on which it is running as argument");
+        }
     }
 
+    /**
+     * Runnable task that checks instances and creates / terminates instances based
+     * on the results.
+     */ 
     private static class InstanceChecker implements Runnable { 
-  
         public void run() 
         { 
             System.out.println("Checking instance CPU usage...");
@@ -115,12 +127,15 @@ public class AutoScaler {
      */
     public static void checkInstanceCapacities() {
         try {
-            Set<Instance> instances = ServerHelper.getInstances(ec2Client);
+            Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
 
             System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
             
             HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
+            
+            // TODO: CHECK THIS
             double totalAverageCpuUsage = calculateAverage(averageCpuUsagePerInstance);
+            
             System.out.println("Total average CPU usage = " + totalAverageCpuUsage);
             
             if (totalAverageCpuUsage > maxCpuUsage && instances.size() < maxInstances) {
@@ -132,7 +147,7 @@ public class AutoScaler {
                 System.out.println("CPU usage is lower than threshold of " + minCpuUsage);
                 System.out.println("Terminating one of the instances...");
                 // TODO: Decide which one?
-                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+                // terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
             }
             else if (instances.size() < minInstances) {
                 System.out.println("Amount of instances is below min of " + minInstances);
@@ -143,7 +158,7 @@ public class AutoScaler {
                 System.out.println("Amount of instances is above max of " + maxInstances);
                 System.out.println("Terminating one of the instances...");
                 // TODO: Decide which one?
-                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+                // terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
             }
             else {
                 if (totalAverageCpuUsage >= minCpuUsage && totalAverageCpuUsage <= maxCpuUsage) {
@@ -241,7 +256,9 @@ public class AutoScaler {
     // HELPER
     private static double calculateAverage(HashMap<String, Double> vals) {
         Double sum = 0.0;
+        System.out.println("vals.size() " + vals.size());
         if(vals.size() > 0) {
+            System.out.println("vals.values() " + vals.values().toString());
             for (Double val : vals.values()) {
                 sum += val;
             }
