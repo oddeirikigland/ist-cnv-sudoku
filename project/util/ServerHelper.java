@@ -46,7 +46,6 @@ public class ServerHelper {
             Iterator<Instance> iterator = instances.iterator();
             while(iterator.hasNext()) {
                 Instance instance = iterator.next();
-                System.out.println(instance.getPublicIpAddress().equals(ownInstanceIp));
                 if(instance.getState().getCode() != 16 ||
                    instance.getPublicIpAddress().equals(ownInstanceIp)) {
                     iterator.remove();
