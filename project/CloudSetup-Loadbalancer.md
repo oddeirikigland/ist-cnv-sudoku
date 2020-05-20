@@ -36,8 +36,8 @@ export _JAVA_OPTIONS="-XX:-UseSplitVerifier "$_JAVA_OPTIONS
 export CLASSPATH=$CLASSPATH:/home/ec2-user/aws-java-sdk-1.11.762/lib/aws-java-sdk-1.11.762.jar:/home/ec2-user/aws-java-sdk-1.11.762/third-party/lib/*:.
 
 # Pass the ip4 of the instance to exclude it from logic
-java autoscaler/AutoScaler `curl ipconfig.me` &
-java loadbalancer/LoadBalancer `curl ipconfig.me` &
+java autoscaler/AutoScaler `curl ifconfig.me` &
+java loadbalancer/LoadBalancer `curl ifconfig.me` &
 
 wait
 ```
