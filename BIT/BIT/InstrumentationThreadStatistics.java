@@ -6,6 +6,11 @@ import java.text.SimpleDateFormat;
 import java.text.DateFormat;
 
 public class InstrumentationThreadStatistics {
+	private static final long DYNAMIC_BB_COUNT_MAX = Long.parseLong("3837633000");
+	private static final long DYNAMIC_BB_COUNT_MIN = 85579620;
+	private static final long DYNAMIC_METHOD_COUNT_MAX = 36783;
+	private static final long DYNAMIC_METHOD_COUNT_MIN = 747;
+
 	// General
 	long start_time;
 	long threadId;
@@ -68,6 +73,10 @@ public class InstrumentationThreadStatistics {
 			else System.out.println("Parameter with unvalid name");
 		}
 	}
+
+	static float normalize_value(long value, long min, long max) {
+		return (float) (value - min) / (max - min);
+	}
 	
 	// Getters for DynamoDB, needs to be String as return type    
     public String getThreadId() {
@@ -116,11 +125,8 @@ public class InstrumentationThreadStatistics {
 
 	public String getMetric() {
 		return String.valueOf(
-			this.dyn_bb_count +
-			this.dyn_method_count +
-			this.anewarraycount +
-			this.multianewarraycount +
-			this.storecount 
+			(normalize_value(this.dyn_bb_count, DYNAMIC_BB_COUNT_MIN, DYNAMIC_BB_COUNT_MAX) + 
+			normalize_value(this.dyn_method_count, DYNAMIC_METHOD_COUNT_MIN, DYNAMIC_METHOD_COUNT_MAX)) / 2			
 		);
 	}
 
