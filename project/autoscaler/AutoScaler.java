@@ -68,8 +68,8 @@ public class AutoScaler {
     public static void main(final String[] args) throws Exception {
         if (args.length > 0) {
             ownInstanceIp = args[0];
-            
-            System.out.println("Own instance ip = " + ownInstanceIp);
+
+            System.out.println("[AutoScaler] " + "Own instance ip = " + ownInstanceIp);
 
             // TODO: Parametrize
             // max CPU, min CPU, min Instances, max Instances
@@ -80,7 +80,7 @@ public class AutoScaler {
             // Delay of a minute
             autoScalerService.scheduleWithFixedDelay(new InstanceChecker(), 0, 60, SECONDS);
         } else {
-            System.out.println("AutoScaler requires the public ip4 of the instance on which it is running as argument");
+            System.out.println("[AutoScaler] " + "AutoScaler requires the public ip4 of the instance on which it is running as argument");
         }
     }
 
@@ -91,7 +91,7 @@ public class AutoScaler {
     private static class InstanceChecker implements Runnable { 
         public void run() 
         { 
-            System.out.println("Checking instance CPU usage...");
+            System.out.println("[AutoScaler] " + "Checking instance CPU usage...");
             checkInstanceCapacities();
         } 
     } 
@@ -130,67 +130,62 @@ public class AutoScaler {
     public static void checkInstanceCapacities() {
         try {
             Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
-
-            System.out.println("You have " + instances.size() + " Amazon EC2 instance(s) running.");
-            
             HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
-            
-            // TODO: CHECK THIS
             double totalAverageCpuUsage = calculateAverage(averageCpuUsagePerInstance);
             
-            System.out.println("Total average CPU usage = " + totalAverageCpuUsage);
+            System.out.println("[AutoScaler] " + "Total average CPU usage = " + totalAverageCpuUsage);
             
             if (totalAverageCpuUsage > maxCpuUsage && instances.size() < maxInstances) {
-                System.out.println("CPU usage is higher than threshold of " + maxCpuUsage);
-                System.out.println("Creating new instance...");
+                System.out.println("[AutoScaler] " + "CPU usage is higher than threshold of " + maxCpuUsage);
+                System.out.println("[AutoScaler] " + "Creating new instance...");
                 createInstance();
             }
             else if (totalAverageCpuUsage < minCpuUsage && instances.size() > minInstances) {
-                System.out.println("CPU usage is lower than threshold of " + minCpuUsage);
-                System.out.println("Terminating one of the instances...");
+                System.out.println("[AutoScaler] " + "CPU usage is lower than threshold of " + minCpuUsage);
+                System.out.println("[AutoScaler] " + "Terminating one of the instances...");
                 // TODO: Decide which one?
-                // terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
             }
             else if (instances.size() < minInstances) {
-                System.out.println("Amount of instances is below min of " + minInstances);
-                System.out.println("Creating new instance...");
+                System.out.println("[AutoScaler] " + "Amount of instances is below min of " + minInstances);
+                System.out.println("[AutoScaler] " + "Creating new instance...");
                 createInstance();
             }
             else if (instances.size() > maxInstances) {
-                System.out.println("Amount of instances is above max of " + maxInstances);
-                System.out.println("Terminating one of the instances...");
+                System.out.println("[AutoScaler] " + "Amount of instances is above max of " + maxInstances);
+                System.out.println("[AutoScaler] " + "Terminating one of the instances...");
                 // TODO: Decide which one?
-                // terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
             }
             else {
                 if (totalAverageCpuUsage >= minCpuUsage && totalAverageCpuUsage <= maxCpuUsage) {
-                    System.out.println("CPU Usage is currently within bounds of " + minCpuUsage + " < usage < " + maxCpuUsage);
+                    System.out.println("[AutoScaler] " + "CPU Usage is currently within bounds of " + minCpuUsage + " < usage < " + maxCpuUsage);
                 }
                 else if (instances.size() == maxInstances) {
-                    System.out.println("Amount of instances is currently at max of " + maxInstances);
+                    System.out.println("[AutoScaler] " + "Amount of instances is currently at max of " + maxInstances);
                 }
                 else if (instances.size() == minInstances) {
-                    System.out.println("Amount of instances is currently at min of " + minInstances);
+                    System.out.println("[AutoScaler] " + "Amount of instances is currently at min of " + minInstances);
                 }
-                System.out.println("No action required");
+                System.out.println("[AutoScaler] " + "No action required");
             }
         } catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which means your request made it "
+            System.out.println("[AutoScaler] " + "Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
-            System.out.println("Error Message:    " + ase.getMessage());
-            System.out.println("HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("Error Type:       " + ase.getErrorType());
-            System.out.println("Request ID:       " + ase.getRequestId());
+            System.out.println("[AutoScaler] " + "Error Message:    " + ase.getMessage());
+            System.out.println("[AutoScaler] " + "HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("[AutoScaler] " + "AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("[AutoScaler] " + "Error Type:       " + ase.getErrorType());
+            System.out.println("[AutoScaler] " + "Request ID:       " + ase.getRequestId());
         } catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which means the client encountered "
+            System.out.println("[AutoScaler] " + "Caught an AmazonClientException, which means the client encountered "
                     + "a serious internal problem while trying to communicate with AWS, "
                     + "such as not being able to access the network.");
-            System.out.println("Error Message: " + ace.getMessage());
+            System.out.println("[AutoScaler] " + "Error Message: " + ace.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("-----------------------------------------");
+        System.out.println("[AutoScaler] " + "-----------------------------------------");
     }
 
     private static void createInstance() {
@@ -212,20 +207,20 @@ public class AutoScaler {
             String newInstanceId = runInstancesResult.getReservation().getInstances()
                 .get(0).getInstanceId();
 
-            System.out.println("New instance with id: " + newInstanceId + " was created");
+            System.out.println("[AutoScaler] " + "New instance with id: " + newInstanceId + " was created");
         } catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which means your request made it "
+            System.out.println("[AutoScaler] " + "Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
-            System.out.println("Error Message:    " + ase.getMessage());
-            System.out.println("HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("Error Type:       " + ase.getErrorType());
-            System.out.println("Request ID:       " + ase.getRequestId());
+            System.out.println("[AutoScaler] " + "Error Message:    " + ase.getMessage());
+            System.out.println("[AutoScaler] " + "HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("[AutoScaler] " + "AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("[AutoScaler] " + "Error Type:       " + ase.getErrorType());
+            System.out.println("[AutoScaler] " + "Request ID:       " + ase.getRequestId());
         } catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which means the client encountered "
+            System.out.println("[AutoScaler] " + "Caught an AmazonClientException, which means the client encountered "
                     + "a serious internal problem while trying to communicate with AWS, "
                     + "such as not being able to access the network.");
-            System.out.println("Error Message: " + ace.getMessage());
+            System.out.println("[AutoScaler] " + "Error Message: " + ace.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -236,20 +231,20 @@ public class AutoScaler {
             TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
             termInstanceReq.withInstanceIds(instanceId);
             ec2Client.terminateInstances(termInstanceReq);
-            System.out.println("Instance with id: " + instanceId + " was removed");
+            System.out.println("[AutoScaler] " + "Instance with id: " + instanceId + " was removed");
         } catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which means your request made it "
+            System.out.println("[AutoScaler] " + "Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
-            System.out.println("Error Message:    " + ase.getMessage());
-            System.out.println("HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("Error Type:       " + ase.getErrorType());
-            System.out.println("Request ID:       " + ase.getRequestId());
+            System.out.println("[AutoScaler] " + "Error Message:    " + ase.getMessage());
+            System.out.println("[AutoScaler] " + "HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("[AutoScaler] " + "AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("[AutoScaler] " + "Error Type:       " + ase.getErrorType());
+            System.out.println("[AutoScaler] " + "Request ID:       " + ase.getRequestId());
         } catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which means the client encountered "
+            System.out.println("[AutoScaler] " + "Caught an AmazonClientException, which means the client encountered "
                     + "a serious internal problem while trying to communicate with AWS, "
                     + "such as not being able to access the network.");
-            System.out.println("Error Message: " + ace.getMessage());
+            System.out.println("[AutoScaler] " + "Error Message: " + ace.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }

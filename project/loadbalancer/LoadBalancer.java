@@ -66,12 +66,12 @@ public class LoadBalancer {
         if (args.length > 0) {
             ownInstanceIp = args[0];
 
-            System.out.println("Own instance ip = " + ownInstanceIp);
+            System.out.println("[LoadBalancer] " + "Own instance ip = " + ownInstanceIp);
 
             initEc2Client();    
             deployLoadBalancer();
         } else {
-            System.out.println("AutoScaler requires the public ip4 of the instance on which it is running as argument");
+            System.out.println("[LoadBalancer] " + "AutoScaler requires the public ip4 of the instance on which it is running as argument");
         }
     }
 
@@ -106,7 +106,7 @@ public class LoadBalancer {
             server.setExecutor(Executors.newCachedThreadPool());
             server.start();
 
-            System.out.println(server.getAddress().toString());
+            System.out.println("[LoadBalancer] " + server.getAddress().toString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -123,7 +123,7 @@ public class LoadBalancer {
 		public void handle(final HttpExchange t) throws IOException {
             // Get the query.
 			final String query = t.getRequestURI().getQuery();
-			System.out.println("Incoming query:\t" + query);
+			System.out.println("[LoadBalancer] " + "Incoming query:\t" + query);
 
 			// Break it down into String[].
 			final String[] params = query.split("&");
@@ -144,7 +144,7 @@ public class LoadBalancer {
                 newArgs.get("n2"),
                 newArgs.get("i")
             );
-            System.out.println("Metric value of this request is: " + metric);
+            System.out.println("[LoadBalancer] " + "Metric value of this request is: " + metric);
 
             // Get designated instance based on the metric
             Instance designatedInstance = getDesignatedInstance(metric, t.getLocalAddress().toString());
@@ -153,12 +153,12 @@ public class LoadBalancer {
             // and await the response.
             String response = "";
             if (designatedInstance != null) {
-                System.out.println("Redirecting request to: " + designatedInstance.getPublicIpAddress());
+                System.out.println("[LoadBalancer] " + "Redirecting request to: " + designatedInstance.getPublicIpAddress());
                 final String body = ServerHelper.parseRequestBody(t.getRequestBody());
                 response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body);
-                System.out.println(designatedInstance.getPublicIpAddress() + " response: " +  response);
+                System.out.println("[LoadBalancer] " + designatedInstance.getPublicIpAddress() + " response: " +  response);
             } else {
-                System.out.println("No running instance was found");
+                System.out.println("[LoadBalancer] " + "No running instance was found");
             }
 
 			// Send response to browser.
@@ -178,7 +178,7 @@ public class LoadBalancer {
             osw.close();
 			os.close();
 
-			System.out.println("Sent response to " + t.getRemoteAddress().toString());
+			System.out.println("[LoadBalancer] " + "Sent response to " + t.getRemoteAddress().toString());
 		}
     }
 
@@ -196,38 +196,38 @@ public class LoadBalancer {
             Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
             HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
 
-            System.out.println(averageCpuUsagePerInstance.toString());
+            System.out.println("[LoadBalancer] " + averageCpuUsagePerInstance.toString());
 
             Double highestUsage = 100.0;
             for (Instance instance : instances) {
                 String curInstanceId = instance.getInstanceId();
                 // Code 16 = instance is running
                 if (instance.getState().getCode() == 16) {
-                    System.out.println(curInstanceId);
+                    System.out.println("[LoadBalancer] " + curInstanceId);
 
                     // TODO: METRIC LOGIC
                     
-                    System.out.println("Instance usage: " + averageCpuUsagePerInstance.get(curInstanceId));
+                    System.out.println("[LoadBalancer] " + "Instance usage: " + averageCpuUsagePerInstance.get(curInstanceId));
                     if (averageCpuUsagePerInstance.get(curInstanceId) < highestUsage) {
                         designatedInstance = instance;
                     }
                 }
             }
 
-            System.out.println("Designated instance: " + designatedInstance.getPublicIpAddress().toString());
+            System.out.println("[LoadBalancer] " + "Designated instance: " + designatedInstance.getPublicIpAddress().toString());
         } catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which means your request made it "
+            System.out.println("[LoadBalancer] " + "Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
-            System.out.println("Error Message:    " + ase.getMessage());
-            System.out.println("HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("Error Type:       " + ase.getErrorType());
-            System.out.println("Request ID:       " + ase.getRequestId());
+            System.out.println("[LoadBalancer] " + "Error Message:    " + ase.getMessage());
+            System.out.println("[LoadBalancer] " + "HTTP Status Code: " + ase.getStatusCode());
+            System.out.println("[LoadBalancer] " + "AWS Error Code:   " + ase.getErrorCode());
+            System.out.println("[LoadBalancer] " + "Error Type:       " + ase.getErrorType());
+            System.out.println("[LoadBalancer] " + "Request ID:       " + ase.getRequestId());
         } catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which means the client encountered "
+            System.out.println("[LoadBalancer] " + "Caught an AmazonClientException, which means the client encountered "
                     + "a serious internal problem while trying to communicate with AWS, "
                     + "such as not being able to access the network.");
-            System.out.println("Error Message: " + ace.getMessage());
+            System.out.println("[LoadBalancer] " + "Error Message: " + ace.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         } 
@@ -278,7 +278,7 @@ public class LoadBalancer {
             rd.close();
             return response.toString();
         } catch (Exception e) {
-            System.out.println("Connection failed");
+            System.out.println("[LoadBalancer] " + "Connection failed");
             e.printStackTrace();
             return null;
         } finally {
