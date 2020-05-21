@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.concurrent.Executors;
 
 import BIT.InstrumentationTool;
+import util.ServerHelper;
 
 public class WebServer {
 
@@ -27,8 +28,6 @@ public class WebServer {
 		//final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 8000), 0);
 
 		final HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
-
-
 
 		server.createContext("/sudoku", new MyHandler());
 		server.createContext("/test", new MyPingHandler());
@@ -40,24 +39,7 @@ public class WebServer {
 		System.out.println(server.getAddress().toString());
 	}
 
-	public static String parseRequestBody(InputStream is) throws IOException {
-        InputStreamReader isr =  new InputStreamReader(is,"utf-8");
-        BufferedReader br = new BufferedReader(isr);
-
-        // From now on, the right way of moving from bytes to utf-8 characters:
-
-        int b;
-        StringBuilder buf = new StringBuilder(512);
-        while ((b = br.read()) != -1) {
-            buf.append((char) b);
-
-        }
-
-        br.close();
-        isr.close();
-
-        return buf.toString();
-    }
+	
 	static class MyHandler implements HttpHandler {
 		@Override
 		public void handle(final HttpExchange t) throws IOException {
@@ -82,7 +64,7 @@ public class WebServer {
 				newArgs.add(splitParam[1]);
 			}
 			newArgs.add("-b");
-			newArgs.add(parseRequestBody(t.getRequestBody()));
+			newArgs.add(ServerHelper.parseRequestBody(t.getRequestBody()));
 
 			newArgs.add("-d");
 

@@ -51,3 +51,18 @@ if test "$1" = "WebServer" ;
 then
     java pt.ulisboa.tecnico.cnv.server.WebServer
 fi
+
+if test "$1" = "LoadBalancer" ;
+then
+    java loadbalancer.LoadBalancer $2
+fi
+
+if test "$1" = "AutoScaler" ;
+then 
+    java autoscaler.AutoScaler $2
+fi
+
+if test "$1" = "KillThreads" ;
+then 
+    pkill java
+fi
