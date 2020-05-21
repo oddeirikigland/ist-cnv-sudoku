@@ -112,7 +112,7 @@ public class AmazonDynamoDBSample {
         // Describe our new table
         DescribeTableRequest describeTableRequest = new DescribeTableRequest().withTableName(tableName);
         TableDescription tableDescription = dynamoDB.describeTable(describeTableRequest).getTable();
-        System.out.println("Table Description: " + tableDescription);
+        // System.out.println("Table Description: " + tableDescription);
     }
 
     public static synchronized void updateSudokuDynamoDB(String tableName, InstrumentationThreadStatistics instrumentedThreadStats) {
@@ -125,17 +125,7 @@ public class AmazonDynamoDBSample {
             Map<String, AttributeValue> item = newItem(instrumentedThreadStats);
             PutItemRequest putItemRequest = new PutItemRequest(tableName, item);
             PutItemResult putItemResult = dynamoDB.putItem(putItemRequest);
-            System.out.println("Result: " + putItemResult);
-
-            // // Scan items for movies with a year attribute greater than 1985
-            // HashMap<String, Condition> scanFilter = new HashMap<String, Condition>();
-            // Condition condition = new Condition()
-            //     .withComparisonOperator(ComparisonOperator.GT.toString())
-            //     .withAttributeValueList(new AttributeValue().withN("1985"));
-            // scanFilter.put("year", condition);
-            // ScanRequest scanRequest = new ScanRequest(tableName).withScanFilter(scanFilter);
-            // ScanResult scanResult = dynamoDB.scan(scanRequest);
-            // System.out.println("Result: " + scanResult);
+            // System.out.println("Result: " + putItemResult);
 
         } catch (AmazonServiceException ase) {
             System.out.println("Caught an AmazonServiceException, which means your request made it "
@@ -191,7 +181,7 @@ public class AmazonDynamoDBSample {
 
             ScanRequest scanRequest = new ScanRequest(tableName).withScanFilter(scanFilter);
             ScanResult scanResult = dynamoDB.scan(scanRequest);
-            System.out.println("Result: " + scanResult);
+            // System.out.println("Result: " + scanResult);
 
             if (scanResult.getCount() > 0) {
                 float metric_value = Float.valueOf(scanResult.getItems().get(0).get("metric_value").getN());

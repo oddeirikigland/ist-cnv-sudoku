@@ -24,6 +24,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.Random;
 
 import java.net.URL;
 import java.net.HttpURLConnection;
@@ -61,6 +66,39 @@ public class LoadBalancer {
     static AmazonEC2 ec2Client;
     static AmazonCloudWatch cloudWatch;
     static String ownInstanceIp;
+    static Random rand = new Random();
+
+    enum MetricLevel {
+        HIGH,
+        MEDIUM,
+        LOW
+    }
+
+    private static MetricLevel getMetricLevel(float metricValue) {
+        if (metricValue == 0.0) return MetricLevel.MEDIUM; // if the request is not in the db yet
+        if (metricValue > 0.02) return MetricLevel.HIGH;
+        if (metricValue < 0.01) return MetricLevel.LOW;
+        return MetricLevel.MEDIUM;
+    }
+
+    // function to sort hashmap by values 
+    private static List<String> sortByValue(HashMap<String, Double> hm) 
+    { 
+        // Create a list from elements of HashMap 
+        List<Map.Entry<String, Double> > list = new LinkedList<Map.Entry<String, Double> >(hm.entrySet()); 
+        // Sort the list 
+        Collections.sort(list, new Comparator<Map.Entry<String, Double> >() { 
+            public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) { 
+                return (o1.getValue()).compareTo(o2.getValue()); 
+            } 
+        });
+        // put data from sorted list to hashmap  
+        List<String> temp = new ArrayList<String>();
+        for (Map.Entry<String, Double> aa : list) { 
+            temp.add(aa.getKey());
+        } 
+        return temp; 
+    }
 
 	public static void main(final String[] args) throws Exception {
         if (args.length > 0) {
@@ -144,10 +182,11 @@ public class LoadBalancer {
                 newArgs.get("n2"),
                 newArgs.get("i")
             );
-            System.out.println("[LoadBalancer] " + "Metric value of this request is: " + metric);
+            MetricLevel metricLevel = getMetricLevel(metric);
+            System.out.println("[LoadBalancer] " + "Metric value of this request is: " + metric + ", which is metric level: " + metricLevel.toString());
 
             // Get designated instance based on the metric
-            Instance designatedInstance = getDesignatedInstance(metric, t.getLocalAddress().toString());
+            Instance designatedInstance = getDesignatedInstance(metricLevel, t.getLocalAddress().toString());
 
             // If a running instance was found, send request to instance
             // and await the response.
@@ -190,31 +229,37 @@ public class LoadBalancer {
      * above 0.05 = heavy
      * else: not heavy
      */
-    private static Instance getDesignatedInstance(float metric, String dedicatedInstanceId) {
+    private static Instance getDesignatedInstance(MetricLevel metricLevel, String dedicatedInstanceId) {
         Instance designatedInstance = null;
         try {
             Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
             HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
-
             System.out.println("[LoadBalancer] " + averageCpuUsagePerInstance.toString());
 
-            Double highestUsage = 100.0;
+            // List of sorted instance ids, from lowest to highest cpu usage
+            List<String> sortedInstancesByUsage = sortByValue(averageCpuUsagePerInstance);
+
+            int highestUsageRank = sortedInstancesByUsage.size() - 1;
+            int randomInstance = rand.nextInt(highestUsageRank + 1);
+
             for (Instance instance : instances) {
                 String curInstanceId = instance.getInstanceId();
                 // Code 16 = instance is running
                 if (instance.getState().getCode() == 16) {
-                    System.out.println("[LoadBalancer] " + curInstanceId);
-
-                    // TODO: METRIC LOGIC
+                    System.out.println("[LoadBalancer] Id: " + curInstanceId + ", Usage: " + averageCpuUsagePerInstance.get(curInstanceId));
                     
-                    System.out.println("[LoadBalancer] " + "Instance usage: " + averageCpuUsagePerInstance.get(curInstanceId));
-                    if (averageCpuUsagePerInstance.get(curInstanceId) < highestUsage) {
-                        designatedInstance = instance;
-                    }
+                    int usageRankInstance = sortedInstancesByUsage.indexOf(curInstanceId);
+
+                    if (metricLevel == MetricLevel.HIGH && usageRankInstance == 0) designatedInstance = instance;
+                    else if (metricLevel == MetricLevel.LOW && usageRankInstance == highestUsageRank) designatedInstance = instance;
+                    else if (metricLevel == MetricLevel.MEDIUM && usageRankInstance == randomInstance) designatedInstance = instance; 
+
+                    if (designatedInstance != null) break;
                 }
             }
-
-            System.out.println("[LoadBalancer] " + "Designated instance: " + designatedInstance.getPublicIpAddress().toString());
+            // no instance chosen, just pick one, should not happen
+            if (designatedInstance == null) designatedInstance = instances.iterator().next();
+            System.out.println("[LoadBalancer] " + "Designated instance: " + designatedInstance.getPublicIpAddress().toString() + ", id: " + designatedInstance.getInstanceId());
         } catch (AmazonServiceException ase) {
             System.out.println("[LoadBalancer] " + "Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
