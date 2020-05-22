@@ -237,10 +237,6 @@ public class AutoScaler {
     	
     	 String instanceToKill = "";
     	 double cpuUsageNewest = averageCPUUsagePerInstance.get(newestInstanceId);
-    	 
-    	 //for testing
-    	 cpuUsageNewest = 4.0;
-    	 //remove after test
      	
     	//First CPU check for newest instance (LIFO principle)
     	if(cpuUsageNewest <= 5.0) { //kill newest instance
