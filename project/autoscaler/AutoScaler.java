@@ -15,6 +15,8 @@ package autoscaler;
  */
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.List;
 import java.util.Map;
@@ -237,15 +239,15 @@ public class AutoScaler {
     	 double cpuUsageNewest = averageCPUUsagePerInstance.get(newestInstanceId);
      	
     	//First CPU check for newest instance (LIFO principle)
-    	if(cpuUsageNewest != null && cpuUsageNewest <= 5.0) { //kill newest instance
-    		instanceToKill = newestInstandeId;
+    	if(cpuUsageNewest <= 5.0) { //kill newest instance
+    		instanceToKill = newestInstanceId;
     	} else {
     		// if newest is busy, check other instances
     		Iterator iterator = averageCPUUsagePerInstance.entrySet().iterator();
             while (iterator.hasNext()) {
                  Map.Entry mapEntry = (Map.Entry) iterator.next();
-                 if(mapEntry.getValue() <= 5.0) {
-                	instanceToKill = mapEntry.getKey();
+                 if((double) mapEntry.getValue() <= 5.0) {
+                	instanceToKill = String.valueOf(mapEntry.getKey());
      				break; //found idle instance
                  }
             } 
@@ -260,7 +262,7 @@ public class AutoScaler {
         	TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
             termInstanceReq.withInstanceIds(instanceToKill);
             ec2Client.terminateInstances(termInstanceReq);
-            System.out.println("[AutoScaler] " + "Instance with id: " + instanceId + " was removed");
+            System.out.println("[AutoScaler] " + "Instance with id: " + instanceToKill + " was removed");
         } catch (AmazonServiceException ase) {
             System.out.println("[AutoScaler] " + "Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
