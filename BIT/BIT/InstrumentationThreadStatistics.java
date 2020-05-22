@@ -22,17 +22,6 @@ public class InstrumentationThreadStatistics {
 	int dyn_method_count;
 	long dyn_bb_count;
 
-	int anewarraycount;
-	int multianewarraycount;
-
-	long storecount;
-
-	StatisticsBranch[] branch_info;
-	int branch_number;
-	int branch_pc;
-	String branch_class_name;
-	String branch_method_name;
-
 	String s;
 	String un;
 	String n1;
@@ -48,11 +37,6 @@ public class InstrumentationThreadStatistics {
 
 		this.dyn_bb_count = 0;
 		this.dyn_method_count = 0;
-
-		this.anewarraycount = 0;
-		this.multianewarraycount = 0;
-
-		this.storecount = 0;
 
 		this.s = "";
 		this.un = "";
@@ -113,16 +97,7 @@ public class InstrumentationThreadStatistics {
 	public String get_dyn_method_count() {
 		return String.valueOf(this.dyn_method_count);
 	}
-	public String get_anewarraycount() {
-		return String.valueOf(this.anewarraycount);
-	}
-	public String get_multianewarraycount() {
-		return String.valueOf(this.multianewarraycount);
-	}
-	public String get_storecount() {
-		return String.valueOf(this.storecount);
-	}
-
+	
 	public String getMetric() {
 		return String.valueOf(
 			(normalize_value(this.dyn_bb_count, DYNAMIC_BB_COUNT_MIN, DYNAMIC_BB_COUNT_MAX) + 
@@ -146,13 +121,8 @@ public class InstrumentationThreadStatistics {
 				"\nRequest params: " + this.logParams() +
 				"\nBasic Counts-------------------------------" + 
 				"\nDynamic basic blocks: " + this.dyn_bb_count +
-				"\nDynamic Methods: " + this.dyn_method_count + 
-				"\nAllocations--------------------------------" + 
-				"\nA new array: " + this.anewarraycount + 
-				"\nMulti a new array: "	+ this.multianewarraycount + 
-				"\nLoad/Store---------------------------------" + 
-				"\nStore count: " + this.storecount  
-		;
+				"\nDynamic Methods: " + this.dyn_method_count
+				;
 	}
 
 	public String logParams() {
@@ -169,25 +139,7 @@ public class InstrumentationThreadStatistics {
 
 	void dynMethodCount(int incr) {
 		this.dyn_method_count++;
-	}
-
-	void allocCount(int type) {
-
-		switch (type) {
-
-		case InstructionTable.anewarray:
-			this.anewarraycount++;
-			break;
-		case InstructionTable.multianewarray:
-			this.multianewarraycount++;
-			break;
-		}
-	}
-
-	void LSCount(int type) {
-		this.storecount++;
-	}
-
-	
+	}	
 }
+
 

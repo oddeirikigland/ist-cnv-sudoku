@@ -43,28 +43,6 @@ public class InstrumentationTool {
 						bb.addBefore("BIT/InstrumentationTool", "dynInstrCount", new Integer(bb.size()));
 					} // DYNAMIC
 
-					// ALLOC
-					InstructionArray instructions = routine.getInstructionArray();
-
-					for (Enumeration instrs = instructions.elements(); instrs.hasMoreElements();) {
-						Instruction instr = (Instruction) instrs.nextElement();
-						int opcode = instr.getOpcode();
-
-						if ((opcode == InstructionTable.anewarray) || (opcode == InstructionTable.multianewarray)) {
-							instr.addBefore("BIT/InstrumentationTool", "allocCount", new Integer(opcode));
-						}
-					} // ALLOC
-
-					// LOAD STORE
-					for (Enumeration instrs = (routine.getInstructionArray()).elements(); instrs.hasMoreElements();) {
-						Instruction instr = (Instruction) instrs.nextElement();
-						int opcode = instr.getOpcode();
-
-						short instr_type = InstructionTable.InstructionTypeTable[opcode];
-						if (instr_type == InstructionTable.STORE_INSTRUCTION) {
-							instr.addBefore("BIT/InstrumentationTool", "LSCount", new Integer(1));
-						}
-					} // LOAD STORE
 				}
 
 				ci.write(out_filename); // do this only once at end of all instrumenting!
@@ -84,15 +62,6 @@ public class InstrumentationTool {
 		threadStore.get(getThreadId()).dynMethodCount(incr);
 	}
 
-	public static synchronized void allocCount(int type) {
-		threadStore.get(getThreadId()).allocCount(type);
-	}
-
-	public static synchronized void LSCount(int type) {
-		threadStore.get(getThreadId()).LSCount(type);
-	}
-
-	
 	// Calls Logger to print results in log file
 	public static synchronized void printToFile(long threadId) {
 		Logger.logToFile(threadStore.get(threadId).resultToLog());
@@ -119,4 +88,5 @@ public class InstrumentationTool {
 		return 123;
 	}
 }
+
 
