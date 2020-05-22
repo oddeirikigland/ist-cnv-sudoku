@@ -139,6 +139,14 @@ public class AutoScaler {
 
             HashMap<String, Double> averageCpuUsagePerInstance = 
                 ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
+            
+            //Log CPU usage of each instance
+            Iterator iterator = averageCpuUsagePerInstance.entrySet().iterator();
+            while (iterator.hasNext()) {
+                 Map.Entry mapEntry = (Map.Entry) iterator.next();
+                 System.out.println("[AutoScaler] " + "Average CPU usage of instance " + mapEntry.getKey() + " = " + mapEntry.getValue());
+                 
+            } 
             double totalAverageCpuUsage = calculateAverage(averageCpuUsagePerInstance);
             
             System.out.println("[AutoScaler] " + "Total average CPU usage = " + totalAverageCpuUsage);
@@ -201,7 +209,7 @@ public class AutoScaler {
                 new RunInstancesRequest();
 
             /* TODO: configure to use your AMI, key and security group */
-            runInstancesRequest.withImageId("ami-04c6e6849835d8d95")
+            runInstancesRequest.withImageId("ami-01a429562a3913a39")
                                 .withInstanceType("t2.micro")
                                 .withMinCount(1)
                                 .withMaxCount(1)
