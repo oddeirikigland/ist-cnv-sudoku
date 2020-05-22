@@ -186,7 +186,7 @@ public class LoadBalancer {
             System.out.println("[LoadBalancer] " + "Metric value of this request is: " + metric + ", which is metric level: " + metricLevel.toString());
 
             // Get designated instance based on the metric
-            Instance designatedInstance = getDesignatedInstance(metricLevel, t.getLocalAddress().toString());
+            Instance designatedInstance = getDesignatedInstance(metricLevel, ownInstanceIp);
 
             // If a running instance was found, send request to instance
             // and await the response.
@@ -229,7 +229,7 @@ public class LoadBalancer {
      * above 0.05 = heavy
      * else: not heavy
      */
-    private static Instance getDesignatedInstance(MetricLevel metricLevel, String dedicatedInstanceId) {
+    private static Instance getDesignatedInstance(MetricLevel metricLevel, String ownInstanceIp) {
         Instance designatedInstance = null;
         try {
             Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
