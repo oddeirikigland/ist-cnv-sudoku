@@ -163,20 +163,9 @@ public class LoadBalancer {
             MetricLevel metricLevel = getMetricLevel(metric);
             System.out.println("[LoadBalancer] " + "Metric value of this request is: " + metric + ", which is metric level: " + metricLevel.toString());
 
-            // Get designated instance based on the metric
-            Instance designatedInstance = getDesignatedInstance(metricLevel, ownInstanceIp);
+            final String body = ServerHelper.parseRequestBody(t.getRequestBody());
 
-            // If a running instance was found, send request to instance
-            // and await the response.
-            String response = "";
-            if (designatedInstance != null) {
-                System.out.println("[LoadBalancer] " + "Redirecting request to: " + designatedInstance.getPublicIpAddress());
-                final String body = ServerHelper.parseRequestBody(t.getRequestBody());
-                response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body, metricLevel);
-                System.out.println("[LoadBalancer] " + designatedInstance.getPublicIpAddress() + " response: " +  response);
-            } else {
-                System.out.println("[LoadBalancer] " + "No running instance was found");
-            }
+            String response = handleRequestWithMetric(metricLevel, t, body);
 
 			// Send response to browser.
 			final Headers hdrs = t.getResponseHeaders();
@@ -196,7 +185,25 @@ public class LoadBalancer {
 			os.close();
 
 			System.out.println("[LoadBalancer] " + "Sent response to " + t.getRemoteAddress().toString());
-		}
+        }
+        
+        private static String handleRequestWithMetric(MetricLevel metricLevel, HttpExchange t, String body) {
+            // Get designated instance based on the metric
+            Instance designatedInstance = getDesignatedInstance(metricLevel, ownInstanceIp);
+
+            // If a running instance was found, send request to instance
+            // and await the response.
+            String response = "";
+            if (designatedInstance != null) {
+                System.out.println("[LoadBalancer] " + "Redirecting request to: " + designatedInstance.getPublicIpAddress());
+                response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body, metricLevel);
+                System.out.println("[LoadBalancer] " + designatedInstance.getPublicIpAddress() + " response: " +  response);
+            } else {
+                System.out.println("[LoadBalancer] " + "No running instance was found");
+            }
+
+            return response;
+        }
 
         /**
          * Find the most suitable instance, given the metric of the request.
@@ -295,25 +302,21 @@ public class LoadBalancer {
                 int waitTime = getWaitTime(metricLevel);
                 String response = "";
                 try {
-                    System.out.println("[Loadbalancer] " + "Awaiting response from: " + instance.getPublicDnsName());
+                    System.out.println("[Loadbalancer] " + "Awaiting response from: " + instance.getPublicIpAddress() + ", with wait time: " + waitTime);
                     response = future.get(waitTime, TimeUnit.SECONDS);
-                    System.out.println("[LoadBalancer] " + "Received response from: " + instance.getPublicDnsName());
+                    System.out.println("[LoadBalancer] " + "Received response from: " + instance.getPublicIpAddress());
                 } catch (TimeoutException e) {
                     future.cancel(true);
-                    System.out.println("[LoadBalancer] " + "TimeoutException: wait time exceeded: " + (waitTime / 1000) + " seconds");
+                    System.out.println("[LoadBalancer] " + "TimeoutException: Wait time exceeded " + waitTime + " seconds");
                     System.out.println("[LoadBalancer] " + "Re-handling exception...");
-                    RequestHandler rh = new RequestHandler();
-                    try {rh.handle(he);} catch (IOException ioe) {ioe.printStackTrace(); return null;}
-                    return null;
+                    response = handleRequestWithMetric(metricLevel, he, body);
                 } 
 
                 executor.shutdownNow();
                 return response;
             } catch (Exception e) {
                 System.out.println("[LoadBalancer] " + "Connection failed, retrying request handling...");
-                RequestHandler rh = new RequestHandler();
-                try {rh.handle(he);} catch (IOException ioe) {ioe.printStackTrace(); return null;}
-                return null;
+                return handleRequestWithMetric(metricLevel, he, body);
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -335,13 +338,13 @@ public class LoadBalancer {
             switch(metricLevel) {
                 // Half a minute
                 case LOW:
-                    return 1;
+                    return 30;
                 // Two minutes
                 case HIGH:
-                    return 1;
+                    return 120;
                 // One minute
                 case MEDIUM: default:
-                    return 1;
+                    return 60;
             }
         }
 
