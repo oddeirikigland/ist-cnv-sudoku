@@ -101,7 +101,6 @@ public class ServerHelper {
                 
                     Double avg = 0.0;
                     for (Datapoint dp : datapoints) {
-                        System.out.println(dp.getAverage());
                         avg = dp.getAverage();
                     }
 

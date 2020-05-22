@@ -194,12 +194,12 @@ public class AutoScaler {
                 new RunInstancesRequest();
 
             /* TODO: configure to use your AMI, key and security group */
-            runInstancesRequest.withImageId("ami-01d6c61c700a0bb63")
+            runInstancesRequest.withImageId("ami-04c6e6849835d8d95")
                                 .withInstanceType("t2.micro")
                                 .withMinCount(1)
                                 .withMaxCount(1)
-                                .withKeyName("CNV-AWS-lab")
-                                .withSecurityGroups("CNV-Project+http");
+                                .withKeyName("cloud-compute-lab3")
+                                .withSecurityGroups("launch-wizard-1-cloud-compute");
             
             RunInstancesResult runInstancesResult =
                 ec2Client.runInstances(runInstancesRequest);
