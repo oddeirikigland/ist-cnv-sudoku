@@ -18,6 +18,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
@@ -56,8 +62,6 @@ import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
 import com.amazonaws.services.ec2.model.MonitorInstancesRequest;
 import com.amazonaws.services.ec2.model.UnmonitorInstancesRequest;
 
-
-
 import pt.ulisboa.tecnico.cnv.server.WebServer;
 import awsclient.AmazonDynamoDBSample;
 import util.ServerHelper;
@@ -74,42 +78,16 @@ public class LoadBalancer {
         LOW
     }
 
-    private static MetricLevel getMetricLevel(float metricValue) {
-        if (metricValue == 0.0) return MetricLevel.MEDIUM; // if the request is not in the db yet
-        if (metricValue > 0.02) return MetricLevel.HIGH;
-        if (metricValue < 0.01) return MetricLevel.LOW;
-        return MetricLevel.MEDIUM;
-    }
-
-    // function to sort hashmap by values 
-    private static List<String> sortByValue(HashMap<String, Double> hm) 
-    { 
-        // Create a list from elements of HashMap 
-        List<Map.Entry<String, Double> > list = new LinkedList<Map.Entry<String, Double> >(hm.entrySet()); 
-        // Sort the list 
-        Collections.sort(list, new Comparator<Map.Entry<String, Double> >() { 
-            public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) { 
-                return (o1.getValue()).compareTo(o2.getValue()); 
-            } 
-        });
-        // put data from sorted list to hashmap  
-        List<String> temp = new ArrayList<String>();
-        for (Map.Entry<String, Double> aa : list) { 
-            temp.add(aa.getKey());
-        } 
-        return temp; 
-    }
-
-	public static void main(final String[] args) throws Exception {
+    public static void main(final String[] args) throws Exception {
         if (args.length > 0) {
             ownInstanceIp = args[0];
 
             System.out.println("[LoadBalancer] " + "Own instance ip = " + ownInstanceIp);
 
-            initEc2Client();    
+            initEc2Client();
             deployLoadBalancer();
         } else {
-            System.out.println("[LoadBalancer] " + "AutoScaler requires the public ip4 of the instance on which it is running as argument");
+            System.out.println("[LoadBalancer] " + "LoadBalancer requires the public ip4 of the instance on which it is running as argument");
         }
     }
 
@@ -194,7 +172,7 @@ public class LoadBalancer {
             if (designatedInstance != null) {
                 System.out.println("[LoadBalancer] " + "Redirecting request to: " + designatedInstance.getPublicIpAddress());
                 final String body = ServerHelper.parseRequestBody(t.getRequestBody());
-                response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body);
+                response = createAndExecuteRequest(t, designatedInstance, t.getRequestURI().toString(), body, metricLevel);
                 System.out.println("[LoadBalancer] " + designatedInstance.getPublicIpAddress() + " response: " +  response);
             } else {
                 System.out.println("[LoadBalancer] " + "No running instance was found");
@@ -219,99 +197,184 @@ public class LoadBalancer {
 
 			System.out.println("[LoadBalancer] " + "Sent response to " + t.getRemoteAddress().toString());
 		}
-    }
 
-    /**
-     * Find the most suitable instance, given the metric of the request.
-     * Exclude the instance with LoadBalancer and AutoScaler running from consideration.
-     * 
-     * Request metric:
-     * above 0.05 = heavy
-     * else: not heavy
-     */
-    private static Instance getDesignatedInstance(MetricLevel metricLevel, String ownInstanceIp) {
-        Instance designatedInstance = null;
-        try {
-            Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
-            HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
-            System.out.println("[LoadBalancer] " + averageCpuUsagePerInstance.toString());
+        /**
+         * Find the most suitable instance, given the metric of the request.
+         * Exclude the instance with LoadBalancer and AutoScaler running from consideration.
+         * 
+         * Request metric:
+         * above 0.05 = heavy
+         * else: not heavy
+         */
+        private static Instance getDesignatedInstance(MetricLevel metricLevel, String ownInstanceIp) {
+            Instance designatedInstance = null;
+            try {
+                Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
+                HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
+                System.out.println("[LoadBalancer] " + averageCpuUsagePerInstance.toString());
 
-            // List of sorted instance ids, from lowest to highest cpu usage
-            List<String> sortedInstancesByUsage = sortByValue(averageCpuUsagePerInstance);
+                // List of sorted instance ids, from lowest to highest cpu usage
+                List<String> sortedInstancesByUsage = sortByValue(averageCpuUsagePerInstance);
 
-            int highestUsageRank = sortedInstancesByUsage.size() - 1;
-            int randomInstance = rand.nextInt(highestUsageRank + 1);
+                int highestUsageRank = sortedInstancesByUsage.size() - 1;
+                int randomInstance = rand.nextInt(highestUsageRank + 1);
 
-            for (Instance instance : instances) {
-                String curInstanceId = instance.getInstanceId();
-                // Code 16 = instance is running
-                if (instance.getState().getCode() == 16) {
-                    System.out.println("[LoadBalancer] Id: " + curInstanceId + ", Usage: " + averageCpuUsagePerInstance.get(curInstanceId));
-                    
-                    int usageRankInstance = sortedInstancesByUsage.indexOf(curInstanceId);
+                for (Instance instance : instances) {
+                    String curInstanceId = instance.getInstanceId();
+                    // Code 16 = instance is running
+                    if (instance.getState().getCode() == 16) {
+                        System.out.println("[LoadBalancer] Id: " + curInstanceId + ", Usage: " + averageCpuUsagePerInstance.get(curInstanceId));
+                        
+                        int usageRankInstance = sortedInstancesByUsage.indexOf(curInstanceId);
 
-                    if (metricLevel == MetricLevel.HIGH && usageRankInstance == 0) designatedInstance = instance;
-                    else if (metricLevel == MetricLevel.LOW && usageRankInstance == highestUsageRank) designatedInstance = instance;
-                    else if (metricLevel == MetricLevel.MEDIUM && usageRankInstance == randomInstance) designatedInstance = instance; 
+                        if (metricLevel == MetricLevel.HIGH && usageRankInstance == 0) designatedInstance = instance;
+                        else if (metricLevel == MetricLevel.LOW && usageRankInstance == highestUsageRank) designatedInstance = instance;
+                        else if (metricLevel == MetricLevel.MEDIUM && usageRankInstance == randomInstance) designatedInstance = instance; 
 
-                    if (designatedInstance != null) break;
+                        if (designatedInstance != null) break;
+                    }
+                }
+                // no instance chosen, just pick one, should not happen
+                if (designatedInstance == null) designatedInstance = instances.iterator().next();
+                System.out.println("[LoadBalancer] " + "Designated instance: " + designatedInstance.getPublicIpAddress().toString() + ", id: " + designatedInstance.getInstanceId());
+            } catch (AmazonServiceException ase) {
+                System.out.println("[LoadBalancer] " + "Caught an AmazonServiceException, which means your request made it "
+                        + "to AWS, but was rejected with an error response for some reason.");
+                System.out.println("[LoadBalancer] " + "Error Message:    " + ase.getMessage());
+                System.out.println("[LoadBalancer] " + "HTTP Status Code: " + ase.getStatusCode());
+                System.out.println("[LoadBalancer] " + "AWS Error Code:   " + ase.getErrorCode());
+                System.out.println("[LoadBalancer] " + "Error Type:       " + ase.getErrorType());
+                System.out.println("[LoadBalancer] " + "Request ID:       " + ase.getRequestId());
+            } catch (AmazonClientException ace) {
+                System.out.println("[LoadBalancer] " + "Caught an AmazonClientException, which means the client encountered "
+                        + "a serious internal problem while trying to communicate with AWS, "
+                        + "such as not being able to access the network.");
+                System.out.println("[LoadBalancer] " + "Error Message: " + ace.getMessage());
+            } catch (Exception e) {
+                e.printStackTrace();
+            } 
+            return designatedInstance;
+        }
+
+        /**
+         * Use the HttpExchange object to create a new request which is then delegated to the passed instance.
+         * Returns the response of that instance.
+         * 
+         * SOURCE: https://stackoverflow.com/a/1359700
+         */
+        private static String createAndExecuteRequest (HttpExchange he, Instance instance, String requestURI, String body, MetricLevel metricLevel) {
+            HttpURLConnection connection = null;
+            try {
+                //Create connection
+                URL url = new URL("http://" + instance.getPublicDnsName() + ":8000" + requestURI);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod(he.getRequestMethod());
+
+                final Headers requestHdrs = he.getRequestHeaders();
+                Set<Map.Entry<String,List<String>>> s = requestHdrs.entrySet();
+                for (Map.Entry<String, List<String>> e : s) {
+                    for (String val : e.getValue()) {
+                        connection.setRequestProperty(e.getKey(), val);
+                    }
+                }
+
+                connection.setUseCaches(false);
+                connection.setDoOutput(true);
+
+                // Send request
+                DataOutputStream wr = new DataOutputStream (
+                    connection.getOutputStream());
+                wr.writeBytes(body);
+                wr.close();
+            
+                // Start a thread with a promise (future)
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                Future<String> future = executor.submit(new TimeoutTask(connection));
+
+                // Get time the thread should wait before throwing a TimeoutException
+                int waitTime = getWaitTime(metricLevel);
+                String response = "";
+                try {
+                    System.out.println("[Loadbalancer] " + "Awaiting response from: " + instance.getPublicDnsName());
+                    response = future.get(waitTime, TimeUnit.SECONDS);
+                    System.out.println("[LoadBalancer] " + "Received response from: " + instance.getPublicDnsName());
+                } catch (TimeoutException e) {
+                    future.cancel(true);
+                    System.out.println("[LoadBalancer] " + "TimeoutException: wait time exceeded: " + (waitTime / 1000) + " seconds");
+                    System.out.println("[LoadBalancer] " + "Re-handling exception...");
+                    RequestHandler rh = new RequestHandler();
+                    try {rh.handle(he);} catch (IOException ioe) {ioe.printStackTrace(); return null;}
+                    return null;
+                } 
+
+                executor.shutdownNow();
+                return response;
+            } catch (Exception e) {
+                System.out.println("[LoadBalancer] " + "Connection failed, retrying request handling...");
+                RequestHandler rh = new RequestHandler();
+                try {rh.handle(he);} catch (IOException ioe) {ioe.printStackTrace(); return null;}
+                return null;
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
                 }
             }
-            // no instance chosen, just pick one, should not happen
-            if (designatedInstance == null) designatedInstance = instances.iterator().next();
-            System.out.println("[LoadBalancer] " + "Designated instance: " + designatedInstance.getPublicIpAddress().toString() + ", id: " + designatedInstance.getInstanceId());
-        } catch (AmazonServiceException ase) {
-            System.out.println("[LoadBalancer] " + "Caught an AmazonServiceException, which means your request made it "
-                    + "to AWS, but was rejected with an error response for some reason.");
-            System.out.println("[LoadBalancer] " + "Error Message:    " + ase.getMessage());
-            System.out.println("[LoadBalancer] " + "HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("[LoadBalancer] " + "AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("[LoadBalancer] " + "Error Type:       " + ase.getErrorType());
-            System.out.println("[LoadBalancer] " + "Request ID:       " + ase.getRequestId());
-        } catch (AmazonClientException ace) {
-            System.out.println("[LoadBalancer] " + "Caught an AmazonClientException, which means the client encountered "
-                    + "a serious internal problem while trying to communicate with AWS, "
-                    + "such as not being able to access the network.");
-            System.out.println("[LoadBalancer] " + "Error Message: " + ace.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-        } 
-        return designatedInstance;
-    }
-
-    /**
-     * Use the HttpExchange object to create a new request which is then delegated to the passed instance.
-     * Returns the response of that instance.
-     * 
-     * SOURCE: https://stackoverflow.com/a/1359700
-     */
-    private static String createAndExecuteRequest (HttpExchange he, Instance instance, String requestURI, String body) {
-        HttpURLConnection connection = null;
-
-        try {
-            //Create connection
-            URL url = new URL("http://" + instance.getPublicDnsName() + ":8000" + requestURI);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod(he.getRequestMethod());
-
-            final Headers requestHdrs = he.getRequestHeaders();
-            Set<Map.Entry<String,List<String>>> s = requestHdrs.entrySet();
-            for (Map.Entry<String, List<String>> e : s) {
-                for (String val : e.getValue()) {
-                    connection.setRequestProperty(e.getKey(), val);
-                }
-            }
-
-            connection.setUseCaches(false);
-            connection.setDoOutput(true);
-
-            //Send request
-            DataOutputStream wr = new DataOutputStream (
-                connection.getOutputStream());
-            wr.writeBytes(body);
-            wr.close();
+        }
         
-            //Get Response  
+        private static MetricLevel getMetricLevel (float metricValue) {
+            if (metricValue == 0.0) return MetricLevel.MEDIUM; // if the request is not in the db yet
+            if (metricValue > 0.02) return MetricLevel.HIGH;
+            if (metricValue < 0.01) return MetricLevel.LOW;
+            return MetricLevel.MEDIUM;
+        }
+
+        /**
+         * Get wait time, after which a TimeoutException will be thrown and request will be re-handled.
+         */
+        private static int getWaitTime (MetricLevel metricLevel) {
+            switch(metricLevel) {
+                // Half a minute
+                case LOW:
+                    return 1;
+                // Two minutes
+                case HIGH:
+                    return 1;
+                // One minute
+                case MEDIUM: default:
+                    return 1;
+            }
+        }
+
+        // function to sort hashmap by values 
+        private static List<String> sortByValue(HashMap<String, Double> hm) 
+        { 
+            // Create a list from elements of HashMap 
+            List<Map.Entry<String, Double> > list = new LinkedList<Map.Entry<String, Double> >(hm.entrySet()); 
+            // Sort the list 
+            Collections.sort(list, new Comparator<Map.Entry<String, Double> >() { 
+                public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) { 
+                    return (o1.getValue()).compareTo(o2.getValue()); 
+                } 
+            });
+            // put data from sorted list to hashmap  
+            List<String> temp = new ArrayList<String>();
+            for (Map.Entry<String, Double> aa : list) { 
+                temp.add(aa.getKey());
+            } 
+            return temp; 
+        }
+    }
+
+    static class TimeoutTask implements Callable<String> {
+        HttpURLConnection connection;
+
+        TimeoutTask(HttpURLConnection connection) {
+            this.connection = connection;
+        }
+
+        @Override
+        public String call() throws Exception {
+            // Await Response  
             InputStream is = connection.getInputStream();
             BufferedReader rd = new BufferedReader(new InputStreamReader(is));
             StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
@@ -322,14 +385,7 @@ public class LoadBalancer {
             }
             rd.close();
             return response.toString();
-        } catch (Exception e) {
-            System.out.println("[LoadBalancer] " + "Connection failed");
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
     }
 }
+
