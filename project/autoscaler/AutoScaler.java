@@ -130,7 +130,12 @@ public class AutoScaler {
     public static void checkInstanceCapacities() {
         try {
             Set<Instance> instances = ServerHelper.getInstances(ec2Client, ownInstanceIp);
-            HashMap<String, Double> averageCpuUsagePerInstance = ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
+            Instance newestInstance = getNewestInstance(instances);
+
+            System.out.println("[AutoScaler] " + "Newest instance = " + newestInstance.getInstanceId());
+
+            HashMap<String, Double> averageCpuUsagePerInstance = 
+                ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
             double totalAverageCpuUsage = calculateAverage(averageCpuUsagePerInstance);
             
             System.out.println("[AutoScaler] " + "Total average CPU usage = " + totalAverageCpuUsage);
@@ -143,8 +148,7 @@ public class AutoScaler {
             else if (totalAverageCpuUsage < minCpuUsage && instances.size() > minInstances) {
                 System.out.println("[AutoScaler] " + "CPU usage is lower than threshold of " + minCpuUsage);
                 System.out.println("[AutoScaler] " + "Terminating one of the instances...");
-                // TODO: Decide which one?
-                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+                terminateInstance(newestInstance.getInstanceId());
             }
             else if (instances.size() < minInstances) {
                 System.out.println("[AutoScaler] " + "Amount of instances is below min of " + minInstances);
@@ -154,12 +158,12 @@ public class AutoScaler {
             else if (instances.size() > maxInstances) {
                 System.out.println("[AutoScaler] " + "Amount of instances is above max of " + maxInstances);
                 System.out.println("[AutoScaler] " + "Terminating one of the instances...");
-                // TODO: Decide which one?
-                terminateInstance(((Instance)instances.toArray()[0]).getInstanceId());
+                terminateInstance(newestInstance.getInstanceId());
             }
             else {
                 if (totalAverageCpuUsage >= minCpuUsage && totalAverageCpuUsage <= maxCpuUsage) {
-                    System.out.println("[AutoScaler] " + "CPU Usage is currently within bounds of " + minCpuUsage + " < usage < " + maxCpuUsage);
+                    System.out.println("[AutoScaler] " + "CPU Usage is currently within bounds of " + 
+                                        minCpuUsage + " < usage < " + maxCpuUsage);
                 }
                 else if (instances.size() == maxInstances) {
                     System.out.println("[AutoScaler] " + "Amount of instances is currently at max of " + maxInstances);
@@ -248,6 +252,18 @@ public class AutoScaler {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static Instance getNewestInstance(Set<Instance> instances) {
+        Instance newestInstance = new Instance();
+        // Init prevDate as start of time (i.e. start of Linux)
+        Date prevDate = new Date(0);
+        for (Instance instance : instances) {
+            if (instance.getLaunchTime().after(prevDate)) {
+                newestInstance = instance;
+            }
+        } 
+        return newestInstance;
     }
 
     // HELPER
