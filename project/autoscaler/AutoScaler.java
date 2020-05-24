@@ -76,7 +76,7 @@ public class AutoScaler {
 
             // TODO: Parametrize
             // min CPU, max CPU, min Instances, max Instances
-            init(40.0, 60.0, 1, 3);
+            init(40.0, 60.0, 1, 3); //TODO still the values to go or should we switch to different values than the amazon default?
 
             ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
 
@@ -288,7 +288,8 @@ public class AutoScaler {
         }
     }
 
-    private static Instance getNewestInstance(Set<Instance> instances) {
+    private static Instance getNewestInstance(Set<Instance> instances) { 
+    	// TODO this function did not log correct results for me during testing, always logged initial instance id
         Instance newestInstance = new Instance();
         // Init prevDate as start of time (i.e. start of Linux)
         Date prevDate = new Date(0);
