@@ -25,14 +25,10 @@ public class WebServer {
 
 	public static void main(final String[] args) throws Exception {
 
-		//final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 8000), 0);
-
 		final HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
 
 		server.createContext("/sudoku", new MyHandler());
 		server.createContext("/test", new MyPingHandler());
-
-		// be aware! infinite pool of threads!
 		server.setExecutor(Executors.newCachedThreadPool());
 		server.start();
 
@@ -51,10 +47,8 @@ public class WebServer {
 			// Break it down into String[].
 			final String[] params = query.split("&");
 
-			// Calling instrumentation tool to check the params
-			// TODO: use result from checkparams (aka: metrics) to decide where to run the sudoku solver
-			float metricNumber = InstrumentationTool.checkParams(params);
-			System.out.println("Metric value of this request is: " + metricNumber);
+			// Calling instrumentation tool to save the params for collecting metrics
+			InstrumentationTool.saveParams(params); 
 
 			// Store as if it was a direct call to SolverMain.
 			final ArrayList<String> newArgs = new ArrayList<>();
@@ -65,7 +59,6 @@ public class WebServer {
 			}
 			newArgs.add("-b");
 			newArgs.add(ServerHelper.parseRequestBody(t.getRequestBody()));
-
 			newArgs.add("-d");
 
 			// Store from ArrayList into regular String[].
@@ -84,19 +77,13 @@ public class WebServer {
 			//Solve sudoku puzzle
 			JSONArray solution = s.solveSudoku();
 
-			// Store new findings to metrix
-			// TODO: call method in instrumentation tool to store result obtained from solved sudoku
-			System.out.println("Number returned from instrumenatation tool " + InstrumentationTool.result()); // How to call instrumention tool
-
-			// Send response to browser.
+			// Store new findings of metrics and updateDB
+			InstrumentationTool.finalizeMetricAndUpdateInDB();
+						
 			final Headers hdrs = t.getResponseHeaders();
-            //t.sendResponseHeaders(200, responseFile.length());
 
-			///hdrs.add("Content-Type", "image/png");
             hdrs.add("Content-Type", "application/json");
-
 			hdrs.add("Access-Control-Allow-Origin", "*");
-
             hdrs.add("Access-Control-Allow-Credentials", "true");
 			hdrs.add("Access-Control-Allow-Methods", "POST, GET, HEAD, OPTIONS");
 			hdrs.add("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
@@ -105,6 +92,7 @@ public class WebServer {
 
             final OutputStream os = t.getResponseBody();
             OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
+            
             osw.write(solution.toString());
             osw.flush();
             osw.close();
@@ -123,9 +111,7 @@ public class WebServer {
 			final Headers hdrs = t.getResponseHeaders();
 
             hdrs.add("Content-Type", "application/json");
-
 			hdrs.add("Access-Control-Allow-Origin", "*");
-
             hdrs.add("Access-Control-Allow-Credentials", "true");
 			hdrs.add("Access-Control-Allow-Methods", "POST, GET, HEAD, OPTIONS");
 			hdrs.add("Access-Control-Allow-Headers", "Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
@@ -134,10 +120,13 @@ public class WebServer {
 
             final OutputStream os = t.getResponseBody();
             OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
+            
             osw.write(responseBody);
             osw.flush();
             osw.close();
+            
 			os.close();
+			
 			System.out.println("> Sent response to " + t.getRemoteAddress().toString());
 		}
 	}

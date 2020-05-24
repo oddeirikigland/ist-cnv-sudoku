@@ -261,8 +261,7 @@ public class AutoScaler {
             } 
     		
     		if(instanceToKill.equals("")) { // no instance under 5% CPU usage
-    			//kill none
-    			return;
+    			return; //kill none
     		} 
     	}
     	

@@ -118,7 +118,6 @@ public class LoadBalancer {
             final HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
 
             server.createContext("/sudoku", new RequestHandler());
-
             server.setExecutor(Executors.newCachedThreadPool());
             server.start();
 
@@ -267,7 +266,6 @@ public class LoadBalancer {
          * Use the HttpExchange object to create a new request which is then delegated to the passed instance.
          * Returns the response of that instance.
          * 
-         * SOURCE: https://stackoverflow.com/a/1359700
          */
         private static String createAndExecuteRequest (HttpExchange he, Instance instance, String requestURI, String body, MetricLevel metricLevel) {
             HttpURLConnection connection = null;
@@ -380,7 +378,7 @@ public class LoadBalancer {
             // Await Response  
             InputStream is = connection.getInputStream();
             BufferedReader rd = new BufferedReader(new InputStreamReader(is));
-            StringBuilder response = new StringBuilder(); // or StringBuffer if Java version 5+
+            StringBuilder response = new StringBuilder(); 
             String line;
             while ((line = rd.readLine()) != null) {
                 response.append(line);

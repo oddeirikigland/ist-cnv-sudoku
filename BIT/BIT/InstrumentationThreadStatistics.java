@@ -110,21 +110,6 @@ public class InstrumentationThreadStatistics {
 	}
 
 
-	public String resultToLog() {
-
-		long timeUsed = System.nanoTime() - this.start_time;
-		double timeUsedSeconds = (double) timeUsed / 1000000000;
-		return "\n==============================================" 	+	 
-				"\nLogged at: " + this.dateFormat.format(this.date)			+ 
-				"\nSeconds used: " + timeUsedSeconds +
-				"\nThread ID: " + this.threadId +
-				"\nRequest params: " + this.logParams() +
-				"\nBasic Counts-------------------------------" + 
-				"\nDynamic basic blocks: " + this.dyn_bb_count +
-				"\nDynamic Methods: " + this.dyn_method_count
-				;
-	}
-
 	public String logParams() {
 		String out = "";
 		for (String param : this.requestParams) {
