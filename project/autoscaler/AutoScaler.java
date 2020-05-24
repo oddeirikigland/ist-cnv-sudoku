@@ -15,8 +15,11 @@ package autoscaler;
  */
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.Stack;
 import java.util.Date;
@@ -72,7 +75,7 @@ public class AutoScaler {
             System.out.println("[AutoScaler] " + "Own instance ip = " + ownInstanceIp);
 
             // TODO: Parametrize
-            // max CPU, min CPU, min Instances, max Instances
+            // min CPU, max CPU, min Instances, max Instances
             init(40.0, 60.0, 1, 3);
 
             ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
@@ -136,6 +139,14 @@ public class AutoScaler {
 
             HashMap<String, Double> averageCpuUsagePerInstance = 
                 ServerHelper.getAverageCpuUsagePerInstance(cloudWatch, instances);
+            
+            //Log CPU usage of each instance
+            Iterator iterator = averageCpuUsagePerInstance.entrySet().iterator();
+            while (iterator.hasNext()) {
+                 Map.Entry mapEntry = (Map.Entry) iterator.next();
+                 System.out.println("[AutoScaler] " + "Average CPU usage of instance " + mapEntry.getKey() + " = " + mapEntry.getValue());
+                 
+            } 
             double totalAverageCpuUsage = calculateAverage(averageCpuUsagePerInstance);
             
             System.out.println("[AutoScaler] " + "Total average CPU usage = " + totalAverageCpuUsage);
@@ -148,7 +159,7 @@ public class AutoScaler {
             else if (totalAverageCpuUsage < minCpuUsage && instances.size() > minInstances) {
                 System.out.println("[AutoScaler] " + "CPU usage is lower than threshold of " + minCpuUsage);
                 System.out.println("[AutoScaler] " + "Terminating one of the instances...");
-                terminateInstance(newestInstance.getInstanceId());
+                terminateInstance(newestInstance.getInstanceId(), averageCpuUsagePerInstance);
             }
             else if (instances.size() < minInstances) {
                 System.out.println("[AutoScaler] " + "Amount of instances is below min of " + minInstances);
@@ -158,7 +169,7 @@ public class AutoScaler {
             else if (instances.size() > maxInstances) {
                 System.out.println("[AutoScaler] " + "Amount of instances is above max of " + maxInstances);
                 System.out.println("[AutoScaler] " + "Terminating one of the instances...");
-                terminateInstance(newestInstance.getInstanceId());
+                terminateInstance(newestInstance.getInstanceId(), averageCpuUsagePerInstance);
             }
             else {
                 if (totalAverageCpuUsage >= minCpuUsage && totalAverageCpuUsage <= maxCpuUsage) {
@@ -198,7 +209,7 @@ public class AutoScaler {
                 new RunInstancesRequest();
 
             /* TODO: configure to use your AMI, key and security group */
-            runInstancesRequest.withImageId("ami-04c6e6849835d8d95")
+            runInstancesRequest.withImageId("ami-01a429562a3913a39")
                                 .withInstanceType("t2.micro")
                                 .withMinCount(1)
                                 .withMaxCount(1)
@@ -230,12 +241,36 @@ public class AutoScaler {
         }
     }
 
-    private static void terminateInstance(String instanceId) {
-        try {
-            TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
-            termInstanceReq.withInstanceIds(instanceId);
+    private static void terminateInstance(String newestInstanceId, HashMap<String, Double> averageCPUUsagePerInstance) {
+    	
+    	 String instanceToKill = "";
+    	 double cpuUsageNewest = averageCPUUsagePerInstance.get(newestInstanceId);
+     	
+    	//First CPU check for newest instance (LIFO principle)
+    	if(cpuUsageNewest <= 5.0) { //kill newest instance
+    		instanceToKill = newestInstanceId;
+    	} else {
+    		// if newest is busy, check other instances
+    		Iterator iterator = averageCPUUsagePerInstance.entrySet().iterator();
+            while (iterator.hasNext()) {
+                 Map.Entry mapEntry = (Map.Entry) iterator.next();
+                 if((double) mapEntry.getValue() <= 5.0) {
+                	instanceToKill = String.valueOf(mapEntry.getKey());
+     				break; //found idle instance
+                 }
+            } 
+    		
+    		if(instanceToKill.equals("")) { // no instance under 5% CPU usage
+    			//kill none
+    			return;
+    		} 
+    	}
+    	
+    	try {
+        	TerminateInstancesRequest termInstanceReq = new TerminateInstancesRequest();
+            termInstanceReq.withInstanceIds(instanceToKill);
             ec2Client.terminateInstances(termInstanceReq);
-            System.out.println("[AutoScaler] " + "Instance with id: " + instanceId + " was removed");
+            System.out.println("[AutoScaler] " + "Instance with id: " + instanceToKill + " was removed");
         } catch (AmazonServiceException ase) {
             System.out.println("[AutoScaler] " + "Caught an AmazonServiceException, which means your request made it "
                     + "to AWS, but was rejected with an error response for some reason.");
