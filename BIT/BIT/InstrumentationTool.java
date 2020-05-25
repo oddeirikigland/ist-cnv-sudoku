@@ -5,7 +5,6 @@ import java.io.*;
 import java.util.*;
 
 import BIT.InstrumentationThreadStatistics;
-import functions.Logger;
 import awsclient.AmazonDynamoDBSample;
 
 public class InstrumentationTool {
