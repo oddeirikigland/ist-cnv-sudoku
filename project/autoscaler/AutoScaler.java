@@ -288,13 +288,14 @@ public class AutoScaler {
     }
 
     private static Instance getNewestInstance(Set<Instance> instances) { 
-    	// TODO this function did not log correct results for me during testing, always logged initial instance id
-        Instance newestInstance = new Instance();
+    	Instance newestInstance = new Instance();
         // Init prevDate as start of time (i.e. start of Linux)
         Date prevDate = new Date(0);
         for (Instance instance : instances) {
-            if (instance.getLaunchTime().after(prevDate)) {
+        	Date launchTime = instance.getLaunchTime();
+            if (launchTime.after(prevDate)) {
                 newestInstance = instance;
+                prevDate = launchTime;
             }
         } 
         return newestInstance;
