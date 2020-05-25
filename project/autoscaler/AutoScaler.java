@@ -76,7 +76,7 @@ public class AutoScaler {
 
             
             // min CPU, max CPU, min Instances, max Instances
-            init(20.0, 60.0, 1, 3);
+            init(20.0, 50.0, 1, 3);
             ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
 
             // Delay of a minute
@@ -207,7 +207,7 @@ public class AutoScaler {
             RunInstancesRequest runInstancesRequest =
                 new RunInstancesRequest();
 
-            /* TODO: configure to use your AMI, key and security group */
+            /* Attention: configure to use your AMI, key and security group */
             runInstancesRequest.withImageId("ami-01a429562a3913a39")
                                 .withInstanceType("t2.micro")
                                 .withMinCount(1)
