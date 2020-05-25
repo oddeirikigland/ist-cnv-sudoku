@@ -74,10 +74,9 @@ public class AutoScaler {
 
             System.out.println("[AutoScaler] " + "Own instance ip = " + ownInstanceIp);
 
-            // TODO: Parametrize
+            
             // min CPU, max CPU, min Instances, max Instances
-            init(40.0, 60.0, 1, 3);
-
+            init(20.0, 50.0, 1, 3);
             ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
 
             // Delay of a minute
@@ -208,7 +207,7 @@ public class AutoScaler {
             RunInstancesRequest runInstancesRequest =
                 new RunInstancesRequest();
 
-            /* TODO: configure to use your AMI, key and security group */
+            /* Attention: configure to use your AMI, key and security group */
             runInstancesRequest.withImageId("ami-01a429562a3913a39")
                                 .withInstanceType("t2.micro")
                                 .withMinCount(1)
@@ -261,8 +260,7 @@ public class AutoScaler {
             } 
     		
     		if(instanceToKill.equals("")) { // no instance under 5% CPU usage
-    			//kill none
-    			return;
+    			return; //kill none
     		} 
     	}
     	
@@ -289,13 +287,15 @@ public class AutoScaler {
         }
     }
 
-    private static Instance getNewestInstance(Set<Instance> instances) {
-        Instance newestInstance = new Instance();
+    private static Instance getNewestInstance(Set<Instance> instances) { 
+    	Instance newestInstance = new Instance();
         // Init prevDate as start of time (i.e. start of Linux)
         Date prevDate = new Date(0);
         for (Instance instance : instances) {
-            if (instance.getLaunchTime().after(prevDate)) {
+        	Date launchTime = instance.getLaunchTime();
+            if (launchTime.after(prevDate)) {
                 newestInstance = instance;
+                prevDate = launchTime;
             }
         } 
         return newestInstance;

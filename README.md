@@ -15,12 +15,6 @@ chmod +x setup.sh
 source setup.sh configure
 ```
 
-To configure with aws java sdk
-
-```bash
-source setup.sh configure aws-cli
-```
-
 ## Compile sources
 
 ```bash
@@ -38,15 +32,6 @@ In case of `Adress already in use` error:
 ```bash
 sudo lsof -i:8000
 sudo kill <pid>
-```
-
-## Simple Tests
-
-Use one of these commands to see a simple use case
-
-```bash
-source setup.sh InstrumentationToolHello
-source setup.sh InstrumentationToolSolver
 ```
 
 To test DynamoDB connection

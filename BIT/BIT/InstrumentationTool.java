@@ -5,12 +5,10 @@ import java.io.*;
 import java.util.*;
 
 import BIT.InstrumentationThreadStatistics;
-import functions.Logger;
 import awsclient.AmazonDynamoDBSample;
 
-
 public class InstrumentationTool {
-	
+
 	private static PrintStream out = null;
 	private static HashMap<Long, InstrumentationThreadStatistics> threadStore = new HashMap<Long, InstrumentationThreadStatistics>();
 
@@ -41,11 +39,11 @@ public class InstrumentationTool {
 					for (Enumeration b = routine.getBasicBlocks().elements(); b.hasMoreElements();) {
 						BasicBlock bb = (BasicBlock) b.nextElement();
 						bb.addBefore("BIT/InstrumentationTool", "dynInstrCount", new Integer(bb.size()));
-					} // DYNAMIC
+					} 
 
 				}
 
-				ci.write(out_filename); // do this only once at end of all instrumenting!
+				ci.write(out_filename); // do this only once at end of all instrumenting
 			}
 		}
 	}
@@ -62,31 +60,19 @@ public class InstrumentationTool {
 		threadStore.get(getThreadId()).dynMethodCount(incr);
 	}
 
-	// Calls Logger to print results in log file
-	public static synchronized void printToFile(long threadId) {
-		Logger.logToFile(threadStore.get(threadId).resultToLog());
-		AmazonDynamoDBSample.updateSudokuDynamoDB("cnv_sudoku", threadStore.get(threadId));
-	}
-
 	// This method is called before the solver starts
-	public static synchronized float checkParams(String[] params) {
+	public static synchronized void saveParams(String[] params) {
 		long threadId = getThreadId();
 		threadStore.put(threadId, new InstrumentationThreadStatistics(threadId, params));
-
-		// Example on how to get the metric from dynamodb
-		// TODO: In the future this function will be called from load balancer, no need to call it here then
-		InstrumentationThreadStatistics stats = threadStore.get(threadId);
-		return AmazonDynamoDBSample.getMetric("cnv_sudoku", stats.getS(), stats.getUn(), stats.getN1(), stats.getN2(), stats.getI());
+		return;
 	}
 
 	// This is called after solver is done
 	// Logs statistics from solver
-	public static synchronized Integer result() {
+	public static synchronized void finalizeMetricAndUpdateInDB() {
 		long threadId = getThreadId();
-		printToFile(threadId);
+		AmazonDynamoDBSample.updateSudokuDynamoDB("cnv_sudoku", threadStore.get(threadId));
 		threadStore.remove(threadId);
-		return 123;
+		return;
 	}
 }
-
-
