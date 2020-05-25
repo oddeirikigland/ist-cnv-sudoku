@@ -74,10 +74,9 @@ public class AutoScaler {
 
             System.out.println("[AutoScaler] " + "Own instance ip = " + ownInstanceIp);
 
-            // TODO: Parametrize
+            
             // min CPU, max CPU, min Instances, max Instances
-            init(40.0, 60.0, 1, 3); //TODO still the values to go or should we switch to different values than the amazon default?
-
+            init(20.0, 60.0, 1, 3);
             ScheduledExecutorService autoScalerService = new ScheduledThreadPoolExecutor(1);
 
             // Delay of a minute
