@@ -63,7 +63,8 @@ public class InstrumentationTool {
 
 	// This method is called before the solver starts
 	public static synchronized void saveParams(String[] params) {
-		threadStore.put(threadId, new InstrumentationThreadStatistics(getThreadId(), params));
+		long threadId = getThreadId();
+		threadStore.put(threadId, new InstrumentationThreadStatistics(threadId, params));
 		return;
 	}
 
